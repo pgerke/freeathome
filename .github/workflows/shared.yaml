@@ -68,8 +68,11 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: pgerke/freeathome
-
-  # sonarqube: #TODO Add SonarQube job here
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   dependencies:
     name: Check Dependencies
