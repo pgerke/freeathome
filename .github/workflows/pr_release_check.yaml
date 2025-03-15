@@ -37,9 +37,17 @@ jobs:
       - name: Extract Changelog Entry
         id: changelog
         run: echo "CHANGELOG_CONTENT=$(cz ch ${{ env.version }})" >> $GITHUB_ENV
+      - name: Find Comment
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: "github-actions[bot]"
+          body-includes: ✅ **This PR will trigger a new release upon merge!** 🚀
       - name: Comment on PR if release will be triggered
         uses: peter-evans/create-or-update-comment@v4
         with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ✅ **This PR will trigger a new release upon merge!** 🚀
