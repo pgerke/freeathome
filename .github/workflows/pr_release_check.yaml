@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Detect version change
         id: detect_version_change
-        uses: ./.github/actions/check-version-change
+        uses: ./.github/actions/detect-version-change
 
   update_pr_comment:
     name: Update PR Comment
