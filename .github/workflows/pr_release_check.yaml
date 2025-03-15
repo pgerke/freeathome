@@ -11,6 +11,8 @@ jobs:
     outputs:
       version_changed: ${{ steps.detect_version_change.outputs.version_changed }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
       - name: Detect version change
         id: detect_version_change
         uses: ./.github/actions/detect-version-change
