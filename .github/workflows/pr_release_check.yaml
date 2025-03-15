@@ -36,7 +36,7 @@ jobs:
         run: echo "VERSION=$(cz version -p)" >> $GITHUB_ENV
       - name: Extract Changelog Entry
         id: changelog
-        run: echo "CHANGELOG_CONTENT=$(cz ch ${{ env.version }})" >> $GITHUB_ENV
+        run: echo "CHANGELOG_CONTENT=$(cz ch ${{ env.VERSION }})" >> $GITHUB_ENV
       - name: Find Comment
         uses: peter-evans/find-comment@v3
         id: fc
