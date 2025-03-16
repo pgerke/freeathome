@@ -22,4 +22,4 @@ runs:
     - name: Extract Changelog Entry
       shell: bash
       id: changelog
-      run: echo "changelog=$(cz ch ${{ steps.version.outputs.version }})" >> $GITHUB_OUTPUT
+      run: echo "changelog=$(cz ch ${{ steps.version.outputs.version }} --dry-run)" >> $GITHUB_OUTPUT
