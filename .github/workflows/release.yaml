@@ -41,7 +41,6 @@ jobs:
         with:
           tag_name: "${{ steps.extract_version.outputs.version }}"
           name: "v${{ steps.extract_version.outputs.version }}"
-          body_path: release_notes.md
           body: |
             ${{ steps.extract_version.outputs.changelog }}
           prerelease: ${{ contains(steps.extract_version.outputs.version, '-') }}
