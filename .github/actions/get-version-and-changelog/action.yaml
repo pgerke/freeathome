@@ -12,13 +12,11 @@ runs:
   steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-tags: true
     - name: Install Commitizen
       shell: bash
       run: pip install commitizen
-    - shell: bash
-      run: |
-        cat .cz.yaml
-        cat CHANGELOG.md
     - name: Get new version
       shell: bash
       id: version
