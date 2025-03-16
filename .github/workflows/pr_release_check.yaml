@@ -31,12 +31,9 @@ jobs:
         uses: actions-ecosystem/action-add-labels@v1
         with:
           labels: release
-      - name: Get new version
-        id: version
-        run: echo "VERSION=$(cz version -p)" >> $GITHUB_ENV
-      - name: Extract Changelog Entry
-        id: changelog
-        run: echo "CHANGELOG_CONTENT=$(cz ch ${{ env.VERSION }})" >> $GITHUB_ENV
+      - name: Get new version and changelog
+        id: extract_version
+        uses: ./.github/actions/get-version-and-changelog
       - name: Find Comment
         uses: peter-evans/find-comment@v3
         id: fc
@@ -52,10 +49,10 @@ jobs:
           body: |
             ✅ **This PR will trigger a new release upon merge!** 🚀
 
-            ## 📢 Planned version: v${{ env.VERSION }}
+            ## 📢 Planned version: v${{ steps.extract_version.outputs.version }}
 
             🔍 **Changelog for the new version:**
             ```markdown
-            ${{ env.CHANGELOG_CONTENT }}
+            ${{ steps.extract_version.outputs.changelog }}
             ```
           edit-mode: replace
