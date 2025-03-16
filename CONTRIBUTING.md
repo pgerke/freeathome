@@ -90,6 +90,26 @@ func main() {
 3. **Test your changes locally** before pushing.
 4. **Push your branch** and create a pull request.
 
+### Release Workflow
+
+All releases are managed via Release PRs. A Release PR must include a version bump in .cz.yaml.
+
+Upon merging a Release PR, a GitHub Action will:
+
+- Generate a GitHub Release.
+- Extract the relevant changelog entry from CHANGELOG.md.
+- Create a GitHub Release Tag that contains the changelog entry in it's body.
+- Pre-releases (e.g., beta, rc) will be marked correctly based on the library version.
+
+### PR Workflow Enhancements
+
+A PR job automatically comments with:
+
+- The next planned version (from `cz version -p`).
+- The changelog entry (from `cz ch --dry-run`).
+- If new commits are pushed to the PR, the comment updates automatically.
+- If a PR updates .cz.yaml and changes the version key, it gets a release label.
+
 ---
 
 Thank you for contributing! 🎉
