@@ -29,4 +29,8 @@ runs:
       id: changelog
       run: |
         cz ch ${{ steps.version.outputs.version }} --dry-run
-        echo "changelog=$(cz ch ${{ steps.version.outputs.version }} --dry-run)" >> $GITHUB_OUTPUT
+        {
+          echo "changelog<<EOF"
+          cz ch ${{ steps.version.outputs.version }} --dry-run
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
