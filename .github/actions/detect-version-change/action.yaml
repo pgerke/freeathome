@@ -11,12 +11,13 @@ runs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 2
+        fetch-tags: true
 
     - name: Extract version from previous commit
       id: old_version
       shell: bash
       run: |
-        OLD_VERSION=$(git show HEAD^:.cz.yaml | yq '.commitizen.version' || echo "not_found")
+        OLD_VERSION=$(git show HEAD^:.cz.yaml | yq '.commitizen.version // "not_found"')
         echo "OLD_VERSION=$OLD_VERSION" >> $GITHUB_ENV
         echo "Previous version: $OLD_VERSION"
 
