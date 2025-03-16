@@ -15,11 +15,19 @@ runs:
     - name: Install Commitizen
       shell: bash
       run: pip install commitizen
+    - shell: bash
+      run: |
+        cat .cz.yaml
+        cat CHANGELOG.md
     - name: Get new version
       shell: bash
       id: version
-      run: echo "version=$(cz version -p)" >> $GITHUB_OUTPUT
+      run: |
+        cz version -p
+        echo "version=$(cz version -p)" >> $GITHUB_OUTPUT
     - name: Extract Changelog Entry
       shell: bash
       id: changelog
-      run: echo "changelog=$(cz ch ${{ steps.version.outputs.version }} --dry-run)" >> $GITHUB_OUTPUT
+      run: |
+        cz ch ${{ steps.version.outputs.version }} --dry-run
+        echo "changelog=$(cz ch ${{ steps.version.outputs.version }} --dry-run)" >> $GITHUB_OUTPUT
