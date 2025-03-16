@@ -8,16 +8,11 @@ on:
       - main
 
 jobs:
-  ci:
-    name: Continuous Integration
-    uses: ./.github/workflows/shared.yaml
-    secrets: inherit
-
   check_release_trigger:
     name: Check if PR will trigger a Release
     runs-on: ubuntu-latest
     outputs:
-      version_changed: ${{ steps.detect_version_change.outputs.version_changed }} == "true" && "!contains(github.event.head_commit.message, '[skip deploy]')"
+      version_changed: ${{ steps.detect_version_change.outputs.version_changed }} == "true"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,8 +23,8 @@ jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [check_release_trigger, ci]
-    if: ${{ needs.check_release_trigger.outputs.version_changed }} == "true"
+    needs: [check_release_trigger]
+    if: ${{ needs.check_release_trigger.outputs.version_changed }} == "true" && !contains(github.event.head_commit.message, '[skip deploy]')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
