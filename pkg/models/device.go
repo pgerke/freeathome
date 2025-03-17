@@ -23,3 +23,12 @@ type Device struct {
 	// Parameters is a map of parameter names to their values for the device.
 	Parameters *map[string]string `json:"parameters,omitempty"`
 }
+
+// Devices represents a map of devices identified by their serial.
+type Devices map[string]Device
+
+// DeviceResponse represents a map of devices per system access point.
+type DeviceResponse map[string]Devices
+
+// DeviceList represents list of devices per system access point.
+type DeviceList map[string][]string
