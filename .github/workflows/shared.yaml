@@ -13,7 +13,7 @@ jobs:
         with:
           go-version: 1.24
       - name: Run Go Build
-        run: go build -v ./...
+        run: go build -a -v ./...
 
   format:
     name: Check Formatting
