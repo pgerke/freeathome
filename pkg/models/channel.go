@@ -15,10 +15,10 @@ type Channel struct {
 	Floor *string `json:"floorId,omitempty"`
 
 	// Inputs represents the channel's inputs.
-	Inputs []*InOutPut `json:"inputs,omitempty"`
+	Inputs *map[string]InOutPut `json:"inputs,omitempty"`
 
 	// Outputs represents the channel's outputs.
-	Outputs []*InOutPut `json:"outputs,omitempty"`
+	Outputs *map[string]InOutPut `json:"outputs,omitempty"`
 
 	// Parameters represents the channel's parameters.
 	Parameters *map[string]string `json:"parameters,omitempty"`
