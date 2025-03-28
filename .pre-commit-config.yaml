@@ -29,3 +29,8 @@ repos:
       - id: go-vet-mod
       - id: go-mod-tidy
       - id: go-test-mod
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.2
+    hooks:
+      - id: gitleaks
