@@ -1,6 +1,7 @@
 package freeathome
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/go-resty/resty/v2"
@@ -27,7 +28,7 @@ type SystemAccessPoint struct {
 // NewSystemAccessPoint creates a new SystemAccessPoint with the specified host name, user name, password, TLS enabled flag, verbose errors flag, and logger.
 func NewSystemAccessPoint(hostName string, userName string, password string, tlsEnabled bool, verboseErrors bool, logger models.Logger) *SystemAccessPoint {
 	if logger == nil {
-		logger = &DefaultLogger{}
+		logger = NewDefaultLogger(nil)
 		logger.Warn("No logger provided for SystemAccessPoint. Using default logger.")
 	}
 
@@ -55,7 +56,7 @@ func (sysAp *SystemAccessPoint) GetVerboseErrors() bool {
 	return sysAp.verboseErrors
 }
 
-// getUrl constructs a URL string for the SystemAccessPoint based on the provided path.
+// GetUrl constructs a URL string for the SystemAccessPoint based on the provided path.
 // It uses the appropriate protocol (http or https) depending on whether TLS is enabled.
 //
 // Parameters:
@@ -63,7 +64,7 @@ func (sysAp *SystemAccessPoint) GetVerboseErrors() bool {
 //
 // Returns:
 //   - A formatted URL string that includes the protocol, hostname, and the provided path.
-func (sysAp *SystemAccessPoint) getUrl(path string) string {
+func (sysAp *SystemAccessPoint) GetUrl(path string) string {
 	var protocol string
 	if sysAp.tlsEnabled {
 		protocol = "https"
@@ -82,18 +83,23 @@ func (sysAp *SystemAccessPoint) getUrl(path string) string {
 //
 // Possible errors include network issues, non-2xx HTTP responses, or unmarshalling errors.
 func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error) {
-	var configuration models.Configuration
-	resp, err := sysAp.client.R().SetResult(&configuration).Get(sysAp.getUrl("configuration"))
+	resp, err := sysAp.client.R().Get(sysAp.GetUrl("configuration"))
 
 	// Check for errors
 	if err != nil {
-		sysAp.logger.Error("Failed to get configuration", "error", err)
+		sysAp.logger.Error("failed to get configuration", "error", err)
 		return nil, err
 	}
 
 	if resp.IsError() {
-		sysAp.logger.Error("Failed to get configuration", "status", resp.Status(), "body", resp.String())
+		sysAp.logger.Error("failed to get configuration", "status", resp.Status(), "body", resp.String())
 		return nil, fmt.Errorf("failed to get configuration: %s", resp.String())
+	}
+
+	var configuration models.Configuration
+	if err := json.Unmarshal(resp.Body(), &configuration); err != nil {
+		sysAp.logger.Error("failed to parse configuration", "error", err)
+		return nil, err
 	}
 
 	return &configuration, nil
@@ -107,18 +113,23 @@ func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error
 //   - *models.DeviceList: A pointer to the DeviceList model containing the list of devices.
 //   - error: An error if the request fails or the response contains an error.
 func (sysAp *SystemAccessPoint) GetDeviceList() (*models.DeviceList, error) {
-	var deviceList models.DeviceList
-	resp, err := sysAp.client.R().SetResult(&deviceList).Get(sysAp.getUrl("devicelist"))
+	resp, err := sysAp.client.R().Get(sysAp.GetUrl("devicelist"))
 
 	// Check for errors
 	if err != nil {
-		sysAp.logger.Error("Failed to get device list", "error", err)
+		sysAp.logger.Error("failed to get device list", "error", err)
 		return nil, err
 	}
 
 	if resp.IsError() {
-		sysAp.logger.Error("Failed to get device list", "status", resp.Status(), "body", resp.String())
+		sysAp.logger.Error("failed to get device list", "status", resp.Status(), "body", resp.String())
 		return nil, fmt.Errorf("failed to get device list: %s", resp.String())
+	}
+
+	var deviceList models.DeviceList
+	if err := json.Unmarshal(resp.Body(), &deviceList); err != nil {
+		sysAp.logger.Error("failed to parse device list", "error", err)
+		return nil, err
 	}
 
 	return &deviceList, nil

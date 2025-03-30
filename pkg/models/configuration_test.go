@@ -13,7 +13,7 @@ func TestDeserializeValid(t *testing.T) {
 	err := json.Unmarshal([]byte(serialized), &config)
 
 	if err != nil {
-		t.Fatalf("Failed to deserialize JSON: %v", err)
+		t.Fatalf("failed to deserialize JSON: %v", err)
 	}
 
 	expectedName := "Test System Access Point"
