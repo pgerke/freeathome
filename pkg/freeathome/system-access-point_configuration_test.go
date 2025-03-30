@@ -37,7 +37,7 @@ func TestSystemAccessPoint_GetConfiguration(t *testing.T) {
 
 	// Check if the request method and URL are correct
 	if roundtripper.Request.Method != http.MethodGet {
-		t.Errorf("Expected GET request, got %s", response.Request.Method)
+		t.Errorf("Expected GET request, got %s", roundtripper.Request.Method)
 	}
 	expectedUrl := "https://localhost/fhapi/v1/api/rest/configuration"
 	if roundtripper.Request.URL.String() != expectedUrl {
@@ -72,7 +72,7 @@ func TestSystemAccessPoint_GetConfigurationCallError(t *testing.T) {
 	logOutput := buf.String()
 	if strings.Contains(logOutput, "msg=failed to get configuration") ||
 		strings.Contains(logOutput, "error=\"Get \"https://localhost/fhapi/v1/api/rest/configuration\": Test Error") {
-		t.Errorf("Unexpected log output', got: %s", logOutput)
+		t.Errorf("Unexpected log output, got: %s", logOutput)
 	}
 	// Check if result is nil and error is not nil
 	if result != nil {
@@ -112,7 +112,7 @@ func TestSystemAccessPoint_GetConfigurationErrorResponse(t *testing.T) {
 		!strings.Contains(logOutput, "level=ERROR") ||
 		!strings.Contains(logOutput, "status=\"Internal Server Error\"") ||
 		!strings.Contains(logOutput, "body=\"Internal Server Error\"") {
-		t.Errorf("Unexpected log output', got: %s", logOutput)
+		t.Errorf("Unexpected log output, got: %s", logOutput)
 	}
 
 	// Check if result is nil and error is not nil
@@ -160,7 +160,7 @@ func TestSystemAccessPoint_GetConfigurationUnmarshalError(t *testing.T) {
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, "msg=\"failed to parse configuration\"") ||
 		!strings.Contains(logOutput, "level=ERROR") {
-		t.Errorf("Unexpected log output', got: %s", logOutput)
+		t.Errorf("Unexpected log output, got: %s", logOutput)
 	}
 
 	// Check if result is nil and error is not nil
