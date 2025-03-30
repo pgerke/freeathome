@@ -1,6 +1,6 @@
 package models
 
-// WebSocketMessage represents a message that can be sent over a WebSocket connection.
+// WebSocketMessage represents a message that can be sent over a web socket connection.
 type WebSocketMessage map[string]Message
 
 type Message struct {

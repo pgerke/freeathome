@@ -1,10 +1,13 @@
 package freeathome
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/gorilla/websocket"
 
 	"github.com/pgerke/freeathome/pkg/models"
 )
@@ -21,8 +24,8 @@ type SystemAccessPoint struct {
 	verboseErrors bool
 	// client is the REST client that is used to communicate with the system access point.
 	client *resty.Client
-	// webSocket is the WebSocket connection that is used to communicate with the system access point.
-	// webSocket *websocket.Conn
+	// webSocket is the web socket connection that is used to communicate with the system access point.
+	webSocket *websocket.Conn
 }
 
 // NewSystemAccessPoint creates a new SystemAccessPoint with the specified host name, user name, password, TLS enabled flag, verbose errors flag, and logger.
@@ -73,6 +76,88 @@ func (sysAp *SystemAccessPoint) GetUrl(path string) string {
 	}
 
 	return fmt.Sprintf("%s://%s/fhapi/v1/api/rest/%s", protocol, sysAp.hostName, path)
+}
+
+func (sysAp *SystemAccessPoint) getWebSocketUrl() string {
+	var protocol string
+	if sysAp.tlsEnabled {
+		protocol = "wss"
+	} else {
+		protocol = "ws"
+	}
+	return fmt.Sprintf("%s://%s/fhapi/v1/api/ws", protocol, sysAp.hostName)
+}
+
+// ConnectWebSocket establishes a web socket connection to the system access point.
+func (sysAp *SystemAccessPoint) ConnectWebSocket() error {
+	// Check if the web socket is already connected
+	if sysAp.webSocket != nil {
+		return fmt.Errorf("web socket is already connected")
+	}
+
+	// Create a new web socket connection
+	basicAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", sysAp.client.UserInfo.Username, sysAp.client.UserInfo.Password)))
+	conn, _, err := websocket.DefaultDialer.Dial(sysAp.getWebSocketUrl(), http.Header{
+		"Authorization": []string{fmt.Sprintf("Basic %s", basicAuth)},
+	})
+
+	// Check for errors
+	if err != nil {
+		sysAp.logger.Error("failed to connect to web socket", "error", err)
+		return err
+	}
+
+	// Set the web socket connection and the close handler
+	sysAp.webSocket = conn
+	sysAp.webSocket.SetCloseHandler(func(code int, text string) error {
+		sysAp.logger.Log("web socket closed", "code", code, "text", text)
+		sysAp.webSocket = nil
+		return nil
+	})
+
+	go func() {
+		for {
+			// Read messages from the web socket
+			messageType, message, err := sysAp.webSocket.ReadMessage()
+
+			// Check for errors
+			if err != nil {
+				sysAp.logger.Error("failed to read message from web socket", "error", err)
+				return
+			}
+
+			// Check if the message type is text
+			if messageType != websocket.TextMessage {
+				sysAp.logger.Warn("received non-text message from web socket", "type", messageType)
+				continue
+			}
+
+			// Handle the message
+			sysAp.logger.Log("Received message from web socket", "message", string(message))
+		}
+	}()
+
+	return nil
+}
+
+// DisconnectWebSocket closes the web socket connection to the system access point.
+func (sysAp *SystemAccessPoint) DisconnectWebSocket() error {
+	// Check if the web socket is already disconnected
+	if sysAp.webSocket == nil {
+		return fmt.Errorf("web socket is not connected")
+	}
+
+	// Close the web socket connection
+	err := sysAp.webSocket.Close()
+
+	// Check for errors
+	if err != nil {
+		sysAp.logger.Error("failed to close web socket", "error", err)
+		return err
+	}
+
+	sysAp.webSocket = nil
+	return nil
 }
 
 // GetConfiguration retrieves the configuration from the system access point.
