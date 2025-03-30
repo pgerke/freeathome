@@ -15,18 +15,22 @@ repos:
     rev: v4.4.1
     hooks:
       - id: commitizen
-      # - id: commitizen-branch
+      - id: commitizen-branch
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: v1.64.7
+    rev: v2.0.2
     hooks:
       - id: golangci-lint
-        args: ["--fast"]
 
-  - repo: https://github.com/dnephin/pre-commit-golang
-    rev: v0.5.1
+  - repo: https://github.com/tekwizely/pre-commit-golang
+    rev: v1.0.0-rc.1
     hooks:
       - id: go-fmt
-      - id: go-vet
+      - id: go-vet-mod
       - id: go-mod-tidy
-      - id: go-unit-tests
+      - id: go-test-mod
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.2
+    hooks:
+      - id: gitleaks
