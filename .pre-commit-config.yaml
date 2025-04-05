@@ -15,7 +15,6 @@ repos:
     rev: v4.4.1
     hooks:
       - id: commitizen
-      - id: commitizen-branch
 
   - repo: https://github.com/golangci/golangci-lint
     rev: v2.0.2

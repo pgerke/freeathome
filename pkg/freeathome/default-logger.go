@@ -1,13 +1,15 @@
 package freeathome
 
-import "log/slog"
+import (
+	"log/slog"
+)
 
 // DefaultLogger is a default implementation of the Logger interface that logs messages to the console.
 type DefaultLogger struct {
 	logger *slog.Logger
 }
 
-// NewDefaultLogger creates a new instance of DefaultLogger.
+// NewDefaultLogger creates a new DefaultLogger instance with the specified slog.Handler.
 func NewDefaultLogger(handler slog.Handler) *DefaultLogger {
 	if handler == nil {
 		handler = slog.Default().Handler()
