@@ -50,7 +50,7 @@ func (h *ColorHandler) Handle(ctx context.Context, r slog.Record) error {
 
 	// Message in cyan
 	msgColor := color.New(color.FgHiWhite).SprintFunc()
-	message := msgColor(fmt.Sprintf("msg=%s", r.Message))
+	message := msgColor(fmt.Sprintf("msg=%s", fmt.Sprint(r.Message)))
 
 	// Source in magenta
 	sourceColor := color.New(color.FgMagenta).SprintFunc()
@@ -65,7 +65,7 @@ func (h *ColorHandler) Handle(ctx context.Context, r slog.Record) error {
 	r.Attrs(func(a slog.Attr) bool {
 		keyColor := color.New(color.FgCyan).SprintFunc()
 		valColor := color.New(color.FgHiGreen).SprintFunc()
-		attrText += fmt.Sprintf(" %s=%s", keyColor(a.Key), valColor(logfmtEscape(a.Value)))
+		attrText += fmt.Sprintf(" %s=%s", keyColor(a.Key), valColor(logfmtEscape(fmt.Sprint(a.Value))))
 		return true
 	})
 
@@ -106,8 +106,7 @@ func levelColor(level slog.Level) func(a ...any) string {
 	}
 }
 
-func logfmtEscape(v slog.Value) string {
-	val := fmt.Sprint(v)
+func logfmtEscape(val string) string {
 	if strings.ContainsAny(val, " \t\n\"") {
 		val = strconv.Quote(val)
 	}

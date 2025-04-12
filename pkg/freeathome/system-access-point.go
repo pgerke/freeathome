@@ -25,6 +25,8 @@ type SystemAccessPoint struct {
 	verboseErrors bool
 	// client is the REST client that is used to communicate with the system access point.
 	client *resty.Client
+	// webSocketMessageChannel is the channel that is used to send messages received from the web socket connection.
+	webSocketMessageChannel chan []byte
 }
 
 // NewSystemAccessPoint creates a new SystemAccessPoint with the specified host name, user name, password, TLS enabled flag, verbose errors flag, and logger.
@@ -35,11 +37,12 @@ func NewSystemAccessPoint(hostName string, userName string, password string, tls
 	}
 
 	return &SystemAccessPoint{
-		hostName:      hostName,
-		logger:        logger,
-		tlsEnabled:    tlsEnabled,
-		verboseErrors: verboseErrors,
-		client:        resty.New().SetBasicAuth(userName, password),
+		hostName:                hostName,
+		logger:                  logger,
+		tlsEnabled:              tlsEnabled,
+		verboseErrors:           verboseErrors,
+		client:                  resty.New().SetBasicAuth(userName, password),
+		webSocketMessageChannel: make(chan []byte, 100),
 	}
 }
 
@@ -90,56 +93,77 @@ func (sysAp *SystemAccessPoint) getWebSocketUrl() string {
 
 // ConnectWebSocket establishes a web socket connection to the system access point.
 func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) error {
-	// Create a new web socket connection
+	// TODO: Implement exponential backoff for reconnection attempts
+	// backoff := time.Second
+	// TODO: Implement a maximum duration for reconnection attempts
+	// TODO: Implement a maximum number of reconnection attempts
+	// TODO: Send a ping message to the server every 30 seconds to avoid idle timeouts
 	basicAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", sysAp.client.UserInfo.Username, sysAp.client.UserInfo.Password)))
-	conn, _, err := websocket.DefaultDialer.Dial(sysAp.getWebSocketUrl(), http.Header{
-		"Authorization": []string{fmt.Sprintf("Basic %s", basicAuth)},
-	})
+	// Start the message handler in a separate goroutine
+	go sysAp.webSocketMessageHandler(ctx)
 
-	// Check for errors
-	if err != nil {
-		sysAp.logger.Error("failed to connect to web socket", "error", err)
-		return err
+	for {
+		select {
+		case <-ctx.Done():
+			// Check if the context is cancelled. In this case, don't return an error, because this is the expected way the context is terminated.
+			if ctx.Err() == context.Canceled {
+				sysAp.logger.Log("context cancelled, stopping web socket connection attempts")
+				return nil
+			}
+
+			return ctx.Err()
+		default:
+			// Create a new web socket connection
+			conn, _, err := websocket.DefaultDialer.Dial(sysAp.getWebSocketUrl(), http.Header{
+				"Authorization": []string{fmt.Sprintf("Basic %s", basicAuth)},
+			})
+
+			// Check for errors
+			if err != nil {
+				sysAp.logger.Error("failed to connect to web socket", "error", err)
+				// time.Sleep(backoff)
+				continue
+			}
+
+			// Start the message loop
+			sysAp.logger.Log("web socket connected successfully, starting message loop")
+			err = sysAp.webSocketMessageLoop(ctx, conn)
+
+			if err != nil {
+				sysAp.logger.Error("web socket message loop failed", "error", err)
+			}
+
+			// Close the web socket connection
+			err = conn.Close()
+			if err != nil {
+				sysAp.logger.Error("failed to close web socket", "error", err)
+			} else {
+				sysAp.logger.Debug("web socket closed successfully")
+			}
+		}
 	}
-
-	// Set the web socket connection and the close handler
-	conn.SetCloseHandler(func(code int, text string) error {
-		sysAp.logger.Log("web socket closed", "code", code, "text", text)
-		return nil
-	})
-
-	sysAp.logger.Log("web socket connected successfully")
-	go sysAp.webSocketMessageLoop(ctx, conn)
-
-	return nil
 }
 
 // webSocketMessageLoop starts a loop to read messages from the web socket connection.
-func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn *websocket.Conn) {
-	// Set the close handler for the web socket connection
-	defer func() {
-		err := conn.Close()
-		if err != nil {
-			sysAp.logger.Error("failed to close web socket", "error", err)
-		} else {
-			sysAp.logger.Log("web socket closed successfully")
-		}
-	}()
-
+func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn *websocket.Conn) error {
 	// Start a loop to read messages from the web socket
 	for {
 		select {
 		case <-ctx.Done():
-			sysAp.logger.Log("message loop context cancelled")
-			return
+			// Check if the context is cancelled. In this case, don't return an error, because this is the expected way the context is terminated.
+			if ctx.Err() == context.Canceled {
+				sysAp.logger.Log("context cancelled, stopping message loop")
+				return nil
+			}
+
+			return ctx.Err()
 		default:
 			// Read messages from the web socket
 			messageType, message, err := conn.ReadMessage()
 
 			// Check for errors
 			if err != nil {
-				sysAp.logger.Error("failed to read message from web socket", "error", err)
-				return
+				return err
 			}
 
 			// Check if the message type is text
@@ -148,17 +172,26 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn *
 				continue
 			}
 
-			// Handle the message
-			sysAp.processWebSocketMessage(message)
+			// Pipe the message to the message handler
+			sysAp.logger.Debug("Received text message from web socket")
+			sysAp.webSocketMessageChannel <- message
 		}
 	}
 }
 
 // processWebSocketMessage processes a message received from the web socket connection.
-func (sysAp *SystemAccessPoint) processWebSocketMessage(message []byte) {
-	// TODO: Implement message processing logic
-	// For now, just log the message
-	sysAp.logger.Log("Received message from web socket", "message", string(message))
+func (sysAp *SystemAccessPoint) webSocketMessageHandler(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			sysAp.logger.Log("context cancelled, stopping message handler")
+			return
+		case message := <-sysAp.webSocketMessageChannel:
+			// For now, just log the message
+			// TODO: Implement message processing logic
+			sysAp.logger.Log("Received message from web socket", "message", string(message))
+		}
+	}
 }
 
 // GetConfiguration retrieves the configuration from the system access point.
