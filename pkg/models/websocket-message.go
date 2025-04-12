@@ -5,7 +5,7 @@ type WebSocketMessage map[string]Message
 
 type Message struct {
 	// Datapoints is a map of datapoint identifiers to their values.
-	Datapoints map[string]WebSocketMessageDatapoint `json:"datapoints"`
+	Datapoints map[string]string `json:"datapoints"`
 
 	// Devices is a map of device identifiers to their values.
 	Devices Devices `json:"devices"`
@@ -23,8 +23,5 @@ type Message struct {
 	Parameters *map[string]string `json:"parameters,omitempty"`
 }
 
-// WebSocketMessageDatapoint represents a map of datapoints identified by their key.
-type WebSocketMessageDatapoint struct {
-	// Datapoints is a map of datapoint identifiers to their values.
-	Datapoints map[string]string `json:"datapoints"`
-}
+// DatapointPattern is a regular expression pattern that matches the format of a datapoint identifier.
+const DatapointPattern = `(?i)^([a-z0-9]{12})\/(ch[\da-f]{4})\/([io]dp\d{4})$`

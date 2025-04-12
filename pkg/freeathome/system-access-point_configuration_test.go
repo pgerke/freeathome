@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/pgerke/freeathome/pkg/models"
 )
 
 // TestSystemAccessPoint_GetConfiguration tests the GetConfiguration method of SystemAccessPoint.
@@ -51,8 +53,8 @@ func TestSystemAccessPoint_GetConfiguration(t *testing.T) {
 	if len(*result) != 1 {
 		t.Errorf("Expected the configuration to contain one system access point, got %d", len(*result))
 	}
-	if len((*result)["00000000-0000-0000-0000-000000000000"].Devices) != 76 {
-		t.Errorf("Expected 76 devices, got %d", len((*result)["00000000-0000-0000-0000-000000000000"].Devices))
+	if len((*result)[models.EmptyUUID].Devices) != 76 {
+		t.Errorf("Expected 76 devices, got %d", len((*result)[models.EmptyUUID].Devices))
 	}
 }
 

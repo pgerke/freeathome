@@ -50,7 +50,7 @@ func (h *ColorHandler) Handle(ctx context.Context, r slog.Record) error {
 
 	// Message in cyan
 	msgColor := color.New(color.FgHiWhite).SprintFunc()
-	message := msgColor(fmt.Sprintf("msg=%s", fmt.Sprint(r.Message)))
+	message := msgColor(fmt.Sprintf("msg=%s", logfmtEscape(fmt.Sprint(r.Message))))
 
 	// Source in magenta
 	sourceColor := color.New(color.FgMagenta).SprintFunc()

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/gorilla/websocket"
@@ -27,6 +28,8 @@ type SystemAccessPoint struct {
 	client *resty.Client
 	// webSocketMessageChannel is the channel that is used to send messages received from the web socket connection.
 	webSocketMessageChannel chan []byte
+	// datapointRegex is the regular expression that is used to match datapoint keys.
+	datapointRegex *regexp.Regexp
 }
 
 // NewSystemAccessPoint creates a new SystemAccessPoint with the specified host name, user name, password, TLS enabled flag, verbose errors flag, and logger.
@@ -43,6 +46,7 @@ func NewSystemAccessPoint(hostName string, userName string, password string, tls
 		verboseErrors:           verboseErrors,
 		client:                  resty.New().SetBasicAuth(userName, password),
 		webSocketMessageChannel: make(chan []byte, 100),
+		datapointRegex:          regexp.MustCompile(models.DatapointPattern),
 	}
 }
 
@@ -97,7 +101,7 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) error {
 	// backoff := time.Second
 	// TODO: Implement a maximum duration for reconnection attempts
 	// TODO: Implement a maximum number of reconnection attempts
-	// TODO: Send a ping message to the server every 30 seconds to avoid idle timeouts
+	// TODO: Send a ping message to the server every 30 seconds to avoid idle timeouts (guard timer)
 	basicAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", sysAp.client.UserInfo.Username, sysAp.client.UserInfo.Password)))
 	// Start the message handler in a separate goroutine
 	go sysAp.webSocketMessageHandler(ctx)
@@ -187,9 +191,37 @@ func (sysAp *SystemAccessPoint) webSocketMessageHandler(ctx context.Context) {
 			sysAp.logger.Log("context cancelled, stopping message handler")
 			return
 		case message := <-sysAp.webSocketMessageChannel:
-			// For now, just log the message
-			// TODO: Implement message processing logic
-			sysAp.logger.Log("Received message from web socket", "message", string(message))
+			// Unmarshal the message into a WebSocketMessage struct
+			var msg models.WebSocketMessage
+			err := json.Unmarshal(message, &msg)
+
+			if err != nil {
+				sysAp.logger.Error("failed to unmarshal message", "error", err)
+				continue
+			}
+
+			// Check if the message is empty
+			if len(msg[models.EmptyUUID].Datapoints) == 0 {
+				sysAp.logger.Warn("web socket message has no datapoints")
+				continue
+			}
+
+			// Process data point updates
+			for key, datapoint := range msg[models.EmptyUUID].Datapoints {
+				// Check if the key matches the expected format
+				if !sysAp.datapointRegex.MatchString(key) {
+					sysAp.logger.Warn(`Ignored datapoint with invalid key format`, "key", key)
+					continue
+				}
+
+				// Log the datapoint update
+				sysAp.logger.Log("data point update",
+					"device", sysAp.datapointRegex.FindStringSubmatch(key)[1],
+					"channel", sysAp.datapointRegex.FindStringSubmatch(key)[2],
+					"datapoint", sysAp.datapointRegex.FindStringSubmatch(key)[3],
+					"value", datapoint,
+				)
+			}
 		}
 	}
 }

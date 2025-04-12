@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/pgerke/freeathome/pkg/models"
 )
 
 // TestSystemAccessPoint_GetDeviceList tests the GetDeviceList method of SystemAccessPoint.
@@ -51,8 +53,8 @@ func TestSystemAccessPoint_GetDeviceList(t *testing.T) {
 	if len(*result) != 1 {
 		t.Errorf("Expected devices from one system access point, got %d", len(*result))
 	}
-	if len((*result)["00000000-0000-0000-0000-000000000000"]) != 76 {
-		t.Errorf("Expected 76 devices, got %d", len((*result)["00000000-0000-0000-0000-000000000000"]))
+	if len((*result)[models.EmptyUUID]) != 76 {
+		t.Errorf("Expected 76 devices, got %d", len((*result)[models.EmptyUUID]))
 	}
 }
 
