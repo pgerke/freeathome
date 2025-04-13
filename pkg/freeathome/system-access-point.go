@@ -30,6 +30,8 @@ type SystemAccessPoint struct {
 	webSocketMessageChannel chan []byte
 	// datapointRegex is the regular expression that is used to match datapoint keys.
 	datapointRegex *regexp.Regexp
+	// onMessageHandled is a callback function that is called when a message is handled.
+	onMessageHandled func()
 }
 
 // NewSystemAccessPoint creates a new SystemAccessPoint with the specified host name, user name, password, TLS enabled flag, verbose errors flag, and logger.
@@ -191,38 +193,49 @@ func (sysAp *SystemAccessPoint) webSocketMessageHandler(ctx context.Context) {
 			sysAp.logger.Log("context cancelled, stopping message handler")
 			return
 		case message := <-sysAp.webSocketMessageChannel:
-			// Unmarshal the message into a WebSocketMessage struct
-			var msg models.WebSocketMessage
-			err := json.Unmarshal(message, &msg)
-
-			if err != nil {
-				sysAp.logger.Error("failed to unmarshal message", "error", err)
-				continue
-			}
-
-			// Check if the message is empty
-			if len(msg[models.EmptyUUID].Datapoints) == 0 {
-				sysAp.logger.Warn("web socket message has no datapoints")
-				continue
-			}
-
-			// Process data point updates
-			for key, datapoint := range msg[models.EmptyUUID].Datapoints {
-				// Check if the key matches the expected format
-				if !sysAp.datapointRegex.MatchString(key) {
-					sysAp.logger.Warn(`Ignored datapoint with invalid key format`, "key", key)
-					continue
-				}
-
-				// Log the datapoint update
-				sysAp.logger.Log("data point update",
-					"device", sysAp.datapointRegex.FindStringSubmatch(key)[1],
-					"channel", sysAp.datapointRegex.FindStringSubmatch(key)[2],
-					"datapoint", sysAp.datapointRegex.FindStringSubmatch(key)[3],
-					"value", datapoint,
-				)
-			}
+			sysAp.processMessage(message)
 		}
+	}
+}
+
+func (sysAp *SystemAccessPoint) processMessage(message []byte) {
+	defer func() {
+		// Call the onMessageHandled callback if it is set
+		if sysAp.onMessageHandled != nil {
+			sysAp.onMessageHandled()
+		}
+	}()
+
+	// Unmarshal the message into a WebSocketMessage struct
+	var msg models.WebSocketMessage
+	err := json.Unmarshal(message, &msg)
+
+	if err != nil {
+		sysAp.logger.Error("failed to unmarshal message", "error", err)
+		return
+	}
+
+	// Check if the message is empty
+	if len(msg[models.EmptyUUID].Datapoints) == 0 {
+		sysAp.logger.Warn("web socket message has no datapoints")
+		return
+	}
+
+	// Process data point updates
+	for key, datapoint := range msg[models.EmptyUUID].Datapoints {
+		// Check if the key matches the expected format
+		if !sysAp.datapointRegex.MatchString(key) {
+			sysAp.logger.Warn(`Ignored datapoint with invalid key format`, "key", key)
+			continue
+		}
+
+		// Log the datapoint update
+		sysAp.logger.Log("data point update",
+			"device", sysAp.datapointRegex.FindStringSubmatch(key)[1],
+			"channel", sysAp.datapointRegex.FindStringSubmatch(key)[2],
+			"datapoint", sysAp.datapointRegex.FindStringSubmatch(key)[3],
+			"value", datapoint,
+		)
 	}
 }
 

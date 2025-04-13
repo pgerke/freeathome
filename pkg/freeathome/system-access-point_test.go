@@ -117,3 +117,41 @@ func TestSystemAccessPoint_GetUrlWithTls(t *testing.T) {
 		t.Errorf("Expected URL '%s', got '%s'", expected, actual)
 	}
 }
+
+// TestSystemAccessPoint_GetWebSocketUrlWithoutTls tests the getWebSocketUrl method of SystemAccessPoint without TLS.
+func TestSystemAccessPoint_GetWsUrlWithoutTls(t *testing.T) {
+	sysAp, buf := setup(t, false)
+
+	actual := sysAp.getWebSocketUrl()
+	expected := "ws://localhost/fhapi/v1/api/ws"
+
+	// Check if the log output is empty
+	logOutput := buf.String()
+	if logOutput != "" {
+		t.Errorf("Expected no log output, got: %s", logOutput)
+	}
+
+	// Check if the actual URL matches the expected URL
+	if actual != expected {
+		t.Errorf("Expected URL '%s', got '%s'", expected, actual)
+	}
+}
+
+// TestSystemAccessPoint_GetWebSocketUrlWithTls tests the getWebSocketUrl method of SystemAccessPoint with TLS.
+func TestSystemAccessPoint_GetWsUrlWithTls(t *testing.T) {
+	sysAp, buf := setup(t, true)
+
+	actual := sysAp.getWebSocketUrl()
+	expected := "wss://localhost/fhapi/v1/api/ws"
+
+	// Check if the log output is empty
+	logOutput := buf.String()
+	if logOutput != "" {
+		t.Errorf("Expected no log output, got: %s", logOutput)
+	}
+
+	// Check if the actual URL matches the expected URL
+	if actual != expected {
+		t.Errorf("Expected URL '%s', got '%s'", expected, actual)
+	}
+}

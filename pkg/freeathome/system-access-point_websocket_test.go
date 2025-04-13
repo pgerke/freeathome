@@ -1,0 +1,208 @@
+package freeathome
+
+import (
+	"context"
+	"encoding/json"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/pgerke/freeathome/pkg/models"
+)
+
+// TestSystemAccessPoint_WebSocketMessageHandler tests the webSocketMessageHandler method of SystemAccessPoint.
+func TestSystemAccessPoint_WebSocketMessageHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sysAp, buf := setup(t, true)
+
+	// Mock a valid WebSocketMessage
+	validMessage := models.WebSocketMessage{
+		models.EmptyUUID: models.Message{
+			Datapoints: map[string]string{
+				"ABB7F595EC47/ch0000/odp0000": "1",
+			},
+		},
+	}
+	validMessageBytes, _ := json.Marshal(validMessage)
+
+	// Mock an invalid WebSocketMessage
+	invalidMessage := []byte(`invalid json`)
+
+	// Mock a WebSocketMessage with no datapoints
+	emptyMessage := models.WebSocketMessage{
+		models.EmptyUUID: models.Message{
+			Datapoints: map[string]string{},
+		},
+	}
+	emptyMessageBytes, _ := json.Marshal(emptyMessage)
+
+	// Mock a WebSocketMessage with invalid datapoint format
+	invalidFormatMessage := models.WebSocketMessage{
+		models.EmptyUUID: models.Message{
+			Datapoints: map[string]string{
+				"Test123": "1",
+			},
+		},
+	}
+	invalidFormatMessageBytes, _ := json.Marshal(invalidFormatMessage)
+
+	// Send messages to the WebSocketMessageChannel
+	var wg sync.WaitGroup
+	wg.Add(4)
+	sysAp.onMessageHandled = wg.Done
+	go func() {
+		sysAp.webSocketMessageChannel <- validMessageBytes
+		sysAp.webSocketMessageChannel <- invalidMessage
+		sysAp.webSocketMessageChannel <- emptyMessageBytes
+		sysAp.webSocketMessageChannel <- invalidFormatMessageBytes
+		wg.Wait()
+		cancel() // Stop the handler after processing the messages
+	}()
+
+	// Start the handler
+	sysAp.webSocketMessageHandler(ctx)
+	cancel()
+
+	// Check the log output
+	logOutput := buf.String()
+
+	// Verify valid message processing
+	if !strings.Contains(logOutput, "data point update") {
+		t.Errorf("Expected log output to contain 'data point update', got: %s", logOutput)
+	}
+
+	// Verify invalid message handling
+	if !strings.Contains(logOutput, "failed to unmarshal message") {
+		t.Errorf("Expected log output to contain 'failed to unmarshal message', got: %s", logOutput)
+	}
+
+	// Verify empty message handling
+	if !strings.Contains(logOutput, "web socket message has no datapoints") {
+		t.Errorf("Expected log output to contain 'web socket message has no datapoints', got: %s", logOutput)
+	}
+
+	// Verify invalid format message handling
+	if !strings.Contains(logOutput, "Ignored datapoint with invalid key format") {
+		t.Errorf("Expected log output to contain 'Ignored datapoint with invalid key format', got: %s", logOutput)
+	}
+}
+
+// TestSystemAccessPoint_ConnectWebSocket_Success tests the successful connection of the WebSocket.
+// func TestSystemAccessPoint_ConnectWebSocket_Success(t *testing.T) {
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
+
+// 	sysAp, buf := setup(t, false)
+
+// 	// Mock the WebSocket connection
+// 	dialer := &websocket.Dialer{}
+// 	websocket.DefaultDialer = dialer
+
+// 	// Mock the WebSocket server
+// 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		upgrader := websocket.Upgrader{}
+// 		conn, err := upgrader.Upgrade(w, r, nil)
+// 		if err != nil {
+// 			t.Fatalf("Failed to upgrade WebSocket: %v", err)
+// 		}
+// 		defer conn.Close()
+// 	}))
+// 	defer server.Close()
+
+// 	sysAp.hostName = strings.TrimPrefix(server.URL, "http://")
+
+// 	// Run ConnectWebSocket in a separate goroutine
+// 	go func() {
+// 		err := sysAp.ConnectWebSocket(ctx)
+// 		if err != nil {
+// 			t.Errorf("Unexpected error: %v", err)
+// 		}
+// 	}()
+
+// 	// Allow some time for the connection to establish
+// 	time.Sleep(100 * time.Millisecond)
+
+// 	// Check the log output
+// 	logOutput := buf.String()
+// 	if !strings.Contains(logOutput, "web socket connected successfully") {
+// 		t.Errorf("Expected log output to contain 'web socket connected successfully', got: %s", logOutput)
+// 	}
+// }
+
+// // TestSystemAccessPoint_ConnectWebSocket_ContextCancelled tests the behavior when the context is cancelled.
+// func TestSystemAccessPoint_ConnectWebSocket_ContextCancelled(t *testing.T) {
+// 	ctx, cancel := context.WithCancel(context.Background())
+
+// 	sysAp, buf := setup(t, false)
+
+// 	// Mock the WebSocket connection
+// 	dialer := &websocket.Dialer{}
+// 	websocket.DefaultDialer = dialer
+
+// 	// Mock the WebSocket server
+// 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		upgrader := websocket.Upgrader{}
+// 		conn, err := upgrader.Upgrade(w, r, nil)
+// 		if err != nil {
+// 			t.Fatalf("Failed to upgrade WebSocket: %v", err)
+// 		}
+// 		defer conn.Close()
+// 	}))
+// 	defer server.Close()
+
+// 	sysAp.hostName = strings.TrimPrefix(server.URL, "http://")
+
+// 	// Run ConnectWebSocket in a separate goroutine
+// 	go func() {
+// 		err := sysAp.ConnectWebSocket(ctx)
+// 		if err != nil && err != context.Canceled {
+// 			t.Errorf("Unexpected error: %v", err)
+// 		}
+// 	}()
+
+// 	// Cancel the context
+// 	cancel()
+
+// 	// Allow some time for the cancellation to propagate
+// 	time.Sleep(100 * time.Millisecond)
+
+// 	// Check the log output
+// 	logOutput := buf.String()
+// 	if !strings.Contains(logOutput, "context cancelled, stopping web socket connection attempts") {
+// 		t.Errorf("Expected log output to contain 'context cancelled, stopping web socket connection attempts', got: %s", logOutput)
+// 	}
+// }
+
+// TestSystemAccessPoint_ConnectWebSocket_Failure tests the behavior when the WebSocket connection fails.
+func TestSystemAccessPoint_ConnectWebSocket_Failure(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sysAp, buf := setup(t, false)
+
+	// Set an invalid host name to simulate connection failure
+	sysAp.hostName = "invalid-host"
+
+	// Run ConnectWebSocket in a separate goroutine
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		err := sysAp.ConnectWebSocket(ctx)
+		if err != nil && !strings.Contains(err.Error(), "dial tcp") {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		wg.Done()
+	}()
+
+	// Allow some time for the connection attempt
+	time.Sleep(100 * time.Millisecond)
+
+	// Check the log output
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "failed to connect to web socket") {
+		t.Errorf("Expected log output to contain 'failed to connect to web socket', got: %s", logOutput)
+	}
+}
