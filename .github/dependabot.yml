@@ -9,7 +9,7 @@ updates:
       include: "scope"
       prefix-development: "ci(dependencies)"
 
-  - package-ecosystem: "npm"
+  - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
