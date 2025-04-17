@@ -6,7 +6,6 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/gorilla/websocket v1.5.3
-	golang.org/x/term v0.31.0
 )
 
 require (
