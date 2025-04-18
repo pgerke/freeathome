@@ -32,6 +32,8 @@ type SystemAccessPoint struct {
 	datapointRegex *regexp.Regexp
 	// onMessageHandled is a callback function that is called when a message is handled.
 	onMessageHandled func()
+	// onError is a callback function that is called when an error occurs.
+	onError func(error)
 }
 
 // NewSystemAccessPoint creates a new SystemAccessPoint with the specified host name, user name, password, TLS enabled flag, verbose errors flag, and logger.
@@ -49,6 +51,13 @@ func NewSystemAccessPoint(hostName string, userName string, password string, tls
 		client:                  resty.New().SetBasicAuth(userName, password),
 		webSocketMessageChannel: make(chan []byte, 100),
 		datapointRegex:          regexp.MustCompile(models.DatapointPattern),
+	}
+}
+
+// emitError is a helper function to emit errors using the onError callback.
+func (sysAp *SystemAccessPoint) emitError(err error) {
+	if sysAp.onError != nil {
+		sysAp.onError(err)
 	}
 }
 
@@ -98,7 +107,7 @@ func (sysAp *SystemAccessPoint) getWebSocketUrl() string {
 }
 
 // ConnectWebSocket establishes a web socket connection to the system access point.
-func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) error {
+func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) {
 	// TODO: Implement exponential backoff for reconnection attempts
 	// backoff := time.Second
 	// TODO: Implement a maximum duration for reconnection attempts
@@ -111,13 +120,8 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			// Check if the context is cancelled. In this case, don't return an error, because this is the expected way the context is terminated.
-			if ctx.Err() == context.Canceled {
-				sysAp.logger.Log("context cancelled, stopping web socket connection attempts")
-				return nil
-			}
-
-			return ctx.Err()
+			sysAp.logger.Log("context cancelled, stopping web socket connection attempts")
+			return
 		default:
 			// Create a new web socket connection
 			conn, _, err := websocket.DefaultDialer.Dial(sysAp.getWebSocketUrl(), http.Header{
@@ -127,6 +131,7 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) error {
 			// Check for errors
 			if err != nil {
 				sysAp.logger.Error("failed to connect to web socket", "error", err)
+				sysAp.emitError(err)
 				// time.Sleep(backoff)
 				continue
 			}
@@ -137,15 +142,12 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) error {
 
 			if err != nil {
 				sysAp.logger.Error("web socket message loop failed", "error", err)
+				sysAp.emitError(err)
 			}
 
 			// Close the web socket connection
 			err = conn.Close()
-			if err != nil {
-				sysAp.logger.Error("failed to close web socket", "error", err)
-			} else {
-				sysAp.logger.Debug("web socket closed successfully")
-			}
+			sysAp.logger.Debug("web socket closed", "error", err)
 		}
 	}
 }
@@ -156,19 +158,15 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn *
 	for {
 		select {
 		case <-ctx.Done():
-			// Check if the context is cancelled. In this case, don't return an error, because this is the expected way the context is terminated.
-			if ctx.Err() == context.Canceled {
-				sysAp.logger.Log("context cancelled, stopping message loop")
-				return nil
-			}
-
-			return ctx.Err()
+			sysAp.logger.Log("context cancelled, stopping message loop")
+			return nil
 		default:
 			// Read messages from the web socket
 			messageType, message, err := conn.ReadMessage()
 
 			// Check for errors
 			if err != nil {
+				sysAp.emitError(err)
 				return err
 			}
 
@@ -212,6 +210,7 @@ func (sysAp *SystemAccessPoint) processMessage(message []byte) {
 
 	if err != nil {
 		sysAp.logger.Error("failed to unmarshal message", "error", err)
+		sysAp.emitError(err)
 		return
 	}
 
@@ -252,6 +251,7 @@ func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error
 	// Check for errors
 	if err != nil {
 		sysAp.logger.Error("failed to get configuration", "error", err)
+		sysAp.emitError(err)
 		return nil, err
 	}
 
@@ -263,6 +263,7 @@ func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error
 	var configuration models.Configuration
 	if err := json.Unmarshal(resp.Body(), &configuration); err != nil {
 		sysAp.logger.Error("failed to parse configuration", "error", err)
+		sysAp.emitError(err)
 		return nil, err
 	}
 
@@ -282,6 +283,7 @@ func (sysAp *SystemAccessPoint) GetDeviceList() (*models.DeviceList, error) {
 	// Check for errors
 	if err != nil {
 		sysAp.logger.Error("failed to get device list", "error", err)
+		sysAp.emitError(err)
 		return nil, err
 	}
 

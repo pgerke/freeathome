@@ -24,8 +24,6 @@ func TestDefaultLogger_DefaultHandler(t *testing.T) {
 	logger.Log(message, testParams...)
 
 	// Check if the log output contains the expected message and parameters
-
-	fmt.Printf("Log output: %s\n", buf.String())
 	evaluateLogOutput(t, buf.String(), message, testParams)
 }
 

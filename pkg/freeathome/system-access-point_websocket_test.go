@@ -3,11 +3,14 @@ package freeathome
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/pgerke/freeathome/pkg/models"
 )
 
@@ -16,7 +19,7 @@ func TestSystemAccessPoint_WebSocketMessageHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, buf := setup(t, true)
+	sysAp, buf, _ := setup(t, true)
 
 	// Mock a valid WebSocketMessage
 	validMessage := models.WebSocketMessage{
@@ -91,114 +94,143 @@ func TestSystemAccessPoint_WebSocketMessageHandler(t *testing.T) {
 }
 
 // TestSystemAccessPoint_ConnectWebSocket_Success tests the successful connection of the WebSocket.
-// func TestSystemAccessPoint_ConnectWebSocket_Success(t *testing.T) {
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
+func TestSystemAccessPoint_ConnectWebSocket_Success(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-// 	sysAp, buf := setup(t, false)
+	sysAp, _, records := setup(t, false)
 
-// 	// Mock the WebSocket connection
-// 	dialer := &websocket.Dialer{}
-// 	websocket.DefaultDialer = dialer
+	// Mock the WebSocket connection
+	dialer := &websocket.Dialer{}
+	websocket.DefaultDialer = dialer
 
-// 	// Mock the WebSocket server
-// 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		upgrader := websocket.Upgrader{}
-// 		conn, err := upgrader.Upgrade(w, r, nil)
-// 		if err != nil {
-// 			t.Fatalf("Failed to upgrade WebSocket: %v", err)
-// 		}
-// 		defer conn.Close()
-// 	}))
-// 	defer server.Close()
+	// Mock the WebSocket server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Fatalf("Failed to upgrade WebSocket: %v", err)
+		}
+		defer func() {
+			_ = conn.Close()
+		}()
+	}))
+	defer server.Close()
 
-// 	sysAp.hostName = strings.TrimPrefix(server.URL, "http://")
+	sysAp.hostName = strings.TrimPrefix(server.URL, "http://")
 
-// 	// Run ConnectWebSocket in a separate goroutine
-// 	go func() {
-// 		err := sysAp.ConnectWebSocket(ctx)
-// 		if err != nil {
-// 			t.Errorf("Unexpected error: %v", err)
-// 		}
-// 	}()
+	// Wait for the expected record in a separate goroutine
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case record := <-records:
+				if record.Level == slog.LevelInfo && strings.Contains(record.Message, "web socket connected successfully") {
+					cancel()
+				}
+			}
+		}
+	}()
 
-// 	// Allow some time for the connection to establish
-// 	time.Sleep(100 * time.Millisecond)
+	// Run ConnectWebSocket in a separate goroutine
+	go func() {
+		sysAp.ConnectWebSocket(ctx)
+	}()
 
-// 	// Check the log output
-// 	logOutput := buf.String()
-// 	if !strings.Contains(logOutput, "web socket connected successfully") {
-// 		t.Errorf("Expected log output to contain 'web socket connected successfully', got: %s", logOutput)
-// 	}
-// }
+	<-ctx.Done()
+}
 
-// // TestSystemAccessPoint_ConnectWebSocket_ContextCancelled tests the behavior when the context is cancelled.
-// func TestSystemAccessPoint_ConnectWebSocket_ContextCancelled(t *testing.T) {
-// 	ctx, cancel := context.WithCancel(context.Background())
+// TestSystemAccessPoint_ConnectWebSocket_ContextCancelled tests the behavior when the context is cancelled.
+func TestSystemAccessPoint_ConnectWebSocket_ContextCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
 
-// 	sysAp, buf := setup(t, false)
+	sysAp, _, records := setup(t, false)
 
-// 	// Mock the WebSocket connection
-// 	dialer := &websocket.Dialer{}
-// 	websocket.DefaultDialer = dialer
+	// Mock the WebSocket connection
+	dialer := &websocket.Dialer{}
+	websocket.DefaultDialer = dialer
 
-// 	// Mock the WebSocket server
-// 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		upgrader := websocket.Upgrader{}
-// 		conn, err := upgrader.Upgrade(w, r, nil)
-// 		if err != nil {
-// 			t.Fatalf("Failed to upgrade WebSocket: %v", err)
-// 		}
-// 		defer conn.Close()
-// 	}))
-// 	defer server.Close()
+	// Mock the WebSocket server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Fatalf("Failed to upgrade WebSocket: %v", err)
+		}
+		defer func() {
+			_ = conn.Close()
+		}()
+	}))
+	defer server.Close()
 
-// 	sysAp.hostName = strings.TrimPrefix(server.URL, "http://")
+	sysAp.hostName = strings.TrimPrefix(server.URL, "http://")
 
-// 	// Run ConnectWebSocket in a separate goroutine
-// 	go func() {
-// 		err := sysAp.ConnectWebSocket(ctx)
-// 		if err != nil && err != context.Canceled {
-// 			t.Errorf("Unexpected error: %v", err)
-// 		}
-// 	}()
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
-// 	// Cancel the context
-// 	cancel()
+	innerCtx, innerCancel := context.WithCancel(context.Background())
+	go func() {
+		for {
+			select {
+			case <-innerCtx.Done():
+				return
+			case record := <-records:
+				// Cancel the context when the web socket is connected successfully
+				if record.Level == slog.LevelInfo && strings.Contains(record.Message, "web socket connected successfully") {
+					cancel()
+					break
+				}
+				// Send one done when the message handler is stopped
+				if record.Level == slog.LevelInfo && strings.Contains(record.Message, "context cancelled, stopping message handler") {
+					wg.Done()
+					break
+				}
+				// Send one done when the web socket connection is stopped
+				if record.Level == slog.LevelInfo && strings.Contains(record.Message, "context cancelled, stopping web socket connection attempts") {
+					wg.Done()
+				}
+			}
+		}
+	}()
 
-// 	// Allow some time for the cancellation to propagate
-// 	time.Sleep(100 * time.Millisecond)
+	// Run ConnectWebSocket in a separate goroutine
+	go func() {
+		sysAp.ConnectWebSocket(ctx)
+	}()
 
-// 	// Check the log output
-// 	logOutput := buf.String()
-// 	if !strings.Contains(logOutput, "context cancelled, stopping web socket connection attempts") {
-// 		t.Errorf("Expected log output to contain 'context cancelled, stopping web socket connection attempts', got: %s", logOutput)
-// 	}
-// }
+	// Wait for the expected records to be processed
+	wg.Wait()
+	// Cancel the inner context to stop the record channel reader
+	innerCancel()
+}
 
 // TestSystemAccessPoint_ConnectWebSocket_Failure tests the behavior when the WebSocket connection fails.
 func TestSystemAccessPoint_ConnectWebSocket_Failure(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, buf := setup(t, false)
+	sysAp, buf, _ := setup(t, false)
 
 	// Set an invalid host name to simulate connection failure
 	sysAp.hostName = "invalid-host"
 
-	// Run ConnectWebSocket in a separate goroutine
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		err := sysAp.ConnectWebSocket(ctx)
-		if err != nil && !strings.Contains(err.Error(), "dial tcp") {
+	// set up the error handler
+	sysAp.onError = func(err error) {
+		if err.Error() == "dial tcp: lookup invalid-host: no such host" {
+			cancel()
+		} else {
 			t.Errorf("Unexpected error: %v", err)
 		}
-		wg.Done()
+	}
+
+	// Run ConnectWebSocket in a separate goroutine
+	go func() {
+		sysAp.ConnectWebSocket(ctx)
 	}()
 
-	// Allow some time for the connection attempt
-	time.Sleep(100 * time.Millisecond)
+	// Wait for the context to be cancelled
+	<-ctx.Done()
 
 	// Check the log output
 	logOutput := buf.String()

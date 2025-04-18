@@ -12,7 +12,7 @@ import (
 
 // TestSystemAccessPoint_GetDeviceList tests the GetDeviceList method of SystemAccessPoint.
 func TestSystemAccessPoint_GetDeviceList(t *testing.T) {
-	sysAp, buf := setup(t, true)
+	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       loadTestResponseBody(t, "devicelist.json"),
@@ -60,7 +60,7 @@ func TestSystemAccessPoint_GetDeviceList(t *testing.T) {
 
 // TestSystemAccessPoint_GetDeviceListCallError tests the GetDeviceList method of SystemAccessPoint
 func TestSystemAccessPoint_GetDeviceListCallError(t *testing.T) {
-	sysAp, buf := setup(t, true)
+	sysAp, buf, _ := setup(t, true)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
 		Response: nil,
@@ -93,7 +93,7 @@ func TestSystemAccessPoint_GetDeviceListCallError(t *testing.T) {
 
 // TestSystemAccessPoint_GetDeviceListErrorResponse tests the GetDeviceList method of SystemAccessPoint
 func TestSystemAccessPoint_GetDeviceListErrorResponse(t *testing.T) {
-	sysAp, buf := setup(t, true)
+	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Status:     "Internal Server Error",
@@ -143,7 +143,7 @@ func TestSystemAccessPoint_GetDeviceListErrorResponse(t *testing.T) {
 
 // TestSystemAccessPoint_GetDeviceListUnmarshalError tests the GetDeviceList method of SystemAccessPoint
 func TestSystemAccessPoint_GetDeviceListUnmarshalError(t *testing.T) {
-	sysAp, buf := setup(t, true)
+	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		// This is intentionally malformed JSON to trigger the unmarshal error
