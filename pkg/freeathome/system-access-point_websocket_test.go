@@ -217,7 +217,7 @@ func TestSystemAccessPoint_ConnectWebSocket_Failure(t *testing.T) {
 
 	// set up the error handler
 	sysAp.onError = func(err error) {
-		if err.Error() == "dial tcp: lookup invalid-host: no such host" {
+		if strings.Contains(err.Error(), "lookup invalid-host") {
 			cancel()
 		} else {
 			t.Errorf("Unexpected error: %v", err)
