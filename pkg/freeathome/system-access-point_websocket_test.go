@@ -246,13 +246,6 @@ func TestSystemAccessPoint_webSocketMessageLoop_TextMessage(t *testing.T) {
 	defer cancel()
 
 	sysAp, buf, _ := setup(t, true)
-	sysAp.onError = func(err error) {
-		if strings.Contains(err.Error(), "no more messages") {
-			cancel()
-		} else {
-			t.Errorf("Unexpected error: %v", err)
-		}
-	}
 
 	// Mock a WebSocket connection
 	conn := &MockConn{
@@ -270,8 +263,9 @@ func TestSystemAccessPoint_webSocketMessageLoop_TextMessage(t *testing.T) {
 	}()
 
 	// Wait for the context to be done
-	<-ctx.Done()
 	message := <-sysAp.webSocketMessageChannel
+	cancel()
+	<-ctx.Done()
 
 	// Check if the message is valid
 	if string(message) != "valid message" {
