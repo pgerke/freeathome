@@ -23,7 +23,7 @@ type ColorHandler struct {
 // NewColorHandler creates a colorized slog handler
 func NewColorHandler(out io.Writer, opts *slog.HandlerOptions) *ColorHandler {
 	if opts == nil {
-		opts = &slog.HandlerOptions{} // fallback vermeiden
+		opts = &slog.HandlerOptions{} // prevent fallback
 	}
 
 	return &ColorHandler{
