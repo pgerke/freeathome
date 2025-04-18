@@ -3,6 +3,7 @@ package freeathome
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -237,4 +238,107 @@ func TestSystemAccessPoint_ConnectWebSocket_Failure(t *testing.T) {
 	if !strings.Contains(logOutput, "failed to connect to web socket") {
 		t.Errorf("Expected log output to contain 'failed to connect to web socket', got: %s", logOutput)
 	}
+}
+
+// TestSystemAccessPoint_webSocketMessageLoop_TextMessage tests the webSocketMessageLoop method for text messages.
+func TestSystemAccessPoint_webSocketMessageLoop_TextMessage(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sysAp, buf, _ := setup(t, true)
+	sysAp.onError = func(err error) {
+		if strings.Contains(err.Error(), "no more messages") {
+			cancel()
+		} else {
+			t.Errorf("Unexpected error: %v", err)
+		}
+	}
+
+	// Mock a WebSocket connection
+	conn := &MockConn{
+		messageType: websocket.TextMessage,
+		r:           []byte("valid message"),
+		err:         nil,
+	}
+
+	// Run the message loop in a separate goroutine
+	go func() {
+		err := sysAp.webSocketMessageLoop(ctx, conn)
+		if err == nil {
+			t.Errorf("Expected error, got nil")
+		}
+	}()
+
+	// Wait for the context to be done
+	<-ctx.Done()
+	message := <-sysAp.webSocketMessageChannel
+
+	// Check if the message is valid
+	if string(message) != "valid message" {
+		t.Errorf("Expected message 'valid message', got: %s", string(message))
+	}
+
+	// Check the log output
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "received text message from web socket") {
+		t.Errorf("Expected log output to contain 'received text message from web socket', got: %s", logOutput)
+	}
+}
+
+// TestSystemAccessPoint_webSocketMessageLoop_NonTextMessage tests the webSocketMessageLoop method for non-text messages.
+func TestSystemAccessPoint_webSocketMessageLoop_NonTextMessage(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sysAp, buf, _ := setup(t, true)
+	sysAp.onError = func(err error) {
+		if strings.Contains(err.Error(), "no more messages") {
+			cancel()
+		} else {
+			t.Errorf("Unexpected error: %v", err)
+		}
+	}
+
+	// Mock a non-text message
+	nonTextMessage := []byte{0x00, 0x01, 0x02}
+
+	// Mock a WebSocket connection
+	conn := &MockConn{
+		messageType: websocket.BinaryMessage,
+		r:           nonTextMessage,
+		err:         nil,
+	}
+
+	// Run the message loop in a separate goroutine
+	go func() {
+		err := sysAp.webSocketMessageLoop(ctx, conn)
+		if err == nil {
+			t.Errorf("Expected error, got nil")
+		}
+	}()
+
+	// Wait for the context to be done
+	<-ctx.Done()
+
+	// Check the log output
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "received non-text message from web socket") {
+		t.Errorf("Expected log output to contain 'received non-text message from web socket', got: %s", logOutput)
+	}
+}
+
+type MockConn struct {
+	messageRead bool
+	messageType int
+	r           []byte
+	err         error
+}
+
+func (m *MockConn) ReadMessage() (int, []byte, error) {
+	if m.messageRead {
+		return -1, nil, fmt.Errorf("no more messages")
+	}
+
+	m.messageRead = true
+	return m.messageType, m.r, m.err
 }

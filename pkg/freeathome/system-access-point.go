@@ -14,6 +14,10 @@ import (
 	"github.com/pgerke/freeathome/pkg/models"
 )
 
+type connection interface {
+	ReadMessage() (messageType int, p []byte, err error)
+}
+
 // SystemAccessPoint represents a system access point that can be used to communicate with a free@home system.
 type SystemAccessPoint struct {
 	// hostName is the host name of the system access point.
@@ -153,7 +157,7 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) {
 }
 
 // webSocketMessageLoop starts a loop to read messages from the web socket connection.
-func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn *websocket.Conn) error {
+func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn connection) error {
 	// Start a loop to read messages from the web socket
 	for {
 		select {
@@ -177,7 +181,7 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn *
 			}
 
 			// Pipe the message to the message handler
-			sysAp.logger.Debug("Received text message from web socket")
+			sysAp.logger.Debug("received text message from web socket")
 			sysAp.webSocketMessageChannel <- message
 		}
 	}
