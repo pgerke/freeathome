@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestDeserializeValid(t *testing.T) {
+func TestDeserializeValidConfiguration(t *testing.T) {
 	serialized := `{"Test":{"devices":{},"floorplan":{"floors":{}},"sysapName":"Test System Access Point","users":{}}}`
 	var config Configuration
 	err := json.Unmarshal([]byte(serialized), &config)
@@ -22,7 +22,7 @@ func TestDeserializeValid(t *testing.T) {
 	}
 }
 
-func TestDeserializeFromFile(t *testing.T) {
+func TestDeserializeConfigurationFromFile(t *testing.T) {
 	path := filepath.Join("..", "..", "testdata", "configuration.json")
 	data, err := os.ReadFile(path)
 	if err != nil {

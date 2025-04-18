@@ -12,7 +12,7 @@ import (
 )
 
 // setup initializes a SystemAccessPoint with a mock logger and returns it along with a buffer to capture log output.
-func setup(t *testing.T, tlsEnabled bool) (*SystemAccessPoint, *bytes.Buffer) {
+func setup(t *testing.T, tlsEnabled bool) (*SystemAccessPoint, *bytes.Buffer, chan slog.Record) {
 	t.Helper()
 
 	// Create a buffer to capture log output
@@ -20,10 +20,16 @@ func setup(t *testing.T, tlsEnabled bool) (*SystemAccessPoint, *bytes.Buffer) {
 	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})
-	logger := NewDefaultLogger(handler)
+	// Create a channel handler to capture log records
+	channelHandler := &ChannelHandler{
+		next:    handler,
+		records: make(chan slog.Record, 100),
+	}
+	// Create the logger
+	logger := NewDefaultLogger(channelHandler)
 
 	// Create a SystemAccessPoint with the default logger
-	return NewSystemAccessPoint("localhost", "user", "password", tlsEnabled, false, logger), &buf
+	return NewSystemAccessPoint("localhost", "user", "password", tlsEnabled, false, logger), &buf, channelHandler.records
 }
 
 // MockRoundTripper is a mock implementation of http.RoundTripper for testing purposes.

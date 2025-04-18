@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/pgerke/freeathome/pkg/models"
 )
 
 // TestSystemAccessPoint_GetDeviceList tests the GetDeviceList method of SystemAccessPoint.
 func TestSystemAccessPoint_GetDeviceList(t *testing.T) {
-	sysAp, buf := setup(t, true)
+	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       loadTestResponseBody(t, "devicelist.json"),
@@ -51,14 +53,14 @@ func TestSystemAccessPoint_GetDeviceList(t *testing.T) {
 	if len(*result) != 1 {
 		t.Errorf("Expected devices from one system access point, got %d", len(*result))
 	}
-	if len((*result)["00000000-0000-0000-0000-000000000000"]) != 76 {
-		t.Errorf("Expected 76 devices, got %d", len((*result)["00000000-0000-0000-0000-000000000000"]))
+	if len((*result)[models.EmptyUUID]) != 76 {
+		t.Errorf("Expected 76 devices, got %d", len((*result)[models.EmptyUUID]))
 	}
 }
 
 // TestSystemAccessPoint_GetDeviceListCallError tests the GetDeviceList method of SystemAccessPoint
 func TestSystemAccessPoint_GetDeviceListCallError(t *testing.T) {
-	sysAp, buf := setup(t, true)
+	sysAp, buf, _ := setup(t, true)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
 		Response: nil,
@@ -91,7 +93,7 @@ func TestSystemAccessPoint_GetDeviceListCallError(t *testing.T) {
 
 // TestSystemAccessPoint_GetDeviceListErrorResponse tests the GetDeviceList method of SystemAccessPoint
 func TestSystemAccessPoint_GetDeviceListErrorResponse(t *testing.T) {
-	sysAp, buf := setup(t, true)
+	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Status:     "Internal Server Error",
@@ -141,7 +143,7 @@ func TestSystemAccessPoint_GetDeviceListErrorResponse(t *testing.T) {
 
 // TestSystemAccessPoint_GetDeviceListUnmarshalError tests the GetDeviceList method of SystemAccessPoint
 func TestSystemAccessPoint_GetDeviceListUnmarshalError(t *testing.T) {
-	sysAp, buf := setup(t, true)
+	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		// This is intentionally malformed JSON to trigger the unmarshal error
