@@ -8,6 +8,14 @@
       "mode": "auto",
       "program": "${file}",
       "showLog": true
+    },
+    {
+      "name": "Attach to process",
+      "type": "go",
+      "request": "attach",
+      "mode": "local",
+      "processId": "${command:pickProcess}",
+      "showLog": true
     }
   ]
 }
