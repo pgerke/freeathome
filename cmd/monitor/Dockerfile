@@ -7,11 +7,12 @@ ARG version=unknown
 WORKDIR /app
 
 # Download modules if neccessary
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy the source code...
-COPY . .
+COPY pkg ./pkg
+COPY cmd/monitor ./cmd/monitor
 
 # ... and compile
 RUN CGO_ENABLED=0 GOOS=linux go build \
