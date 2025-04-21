@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/pgerke/freeathome/pkg/freeathome"
@@ -68,7 +69,7 @@ func run(ctx context.Context) int {
 	sysAp := freeathome.NewSystemAccessPoint(host, user, password, false, true, logger)
 
 	// Connect to the system access point websocket
-	sysAp.ConnectWebSocket(ctx)
+	sysAp.ConnectWebSocket(ctx, 30*time.Second) // TODO: make this configurable -> command line flag
 
 	// Wait for the context to be done (i.e., for the interrupt signal to be received)
 	<-ctx.Done()

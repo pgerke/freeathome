@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/gorilla/websocket"
@@ -32,6 +33,8 @@ type SystemAccessPoint struct {
 	client *resty.Client
 	// webSocketMessageChannel is the channel that is used to send messages received from the web socket connection.
 	webSocketMessageChannel chan []byte
+	// messageReceivedChannel is the channel that is used to signal that a message has been received.
+	messageReceivedChannel chan struct{}
 	// datapointRegex is the regular expression that is used to match datapoint keys.
 	datapointRegex *regexp.Regexp
 	// onMessageHandled is a callback function that is called when a message is handled.
@@ -54,6 +57,7 @@ func NewSystemAccessPoint(hostName string, userName string, password string, tls
 		verboseErrors:           verboseErrors,
 		client:                  resty.New().SetBasicAuth(userName, password),
 		webSocketMessageChannel: make(chan []byte, 100),
+		messageReceivedChannel:  make(chan struct{}, 1),
 		datapointRegex:          regexp.MustCompile(models.DatapointPattern),
 	}
 }
@@ -111,12 +115,11 @@ func (sysAp *SystemAccessPoint) getWebSocketUrl() string {
 }
 
 // ConnectWebSocket establishes a web socket connection to the system access point.
-func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) {
+func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveInterval time.Duration) {
 	// TODO: Implement exponential backoff for reconnection attempts
 	// backoff := time.Second
 	// TODO: Implement a maximum duration for reconnection attempts
 	// TODO: Implement a maximum number of reconnection attempts
-	// TODO: Send a ping message to the server every 30 seconds to avoid idle timeouts (guard timer)
 	basicAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", sysAp.client.UserInfo.Username, sysAp.client.UserInfo.Password)))
 	// Start the message handler in a separate goroutine
 	go sysAp.webSocketMessageHandler(ctx)
@@ -140,6 +143,11 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) {
 				continue
 			}
 
+			// Start keepalive routine
+			keepaliveCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			go sysAp.webSocketKeepalive(keepaliveCtx, conn, keepaliveInterval)
+
 			// Start the message loop
 			sysAp.logger.Log("web socket connected successfully, starting message loop")
 			err = sysAp.webSocketMessageLoop(ctx, conn)
@@ -152,6 +160,7 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) {
 			// Close the web socket connection
 			err = conn.Close()
 			sysAp.logger.Debug("web socket closed", "error", err)
+			cancel()
 		}
 	}
 }
@@ -174,9 +183,12 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn c
 				return err
 			}
 
+			// Signal that a message has been received
+			sysAp.messageReceivedChannel <- struct{}{}
+
 			// Check if the message type is text
 			if messageType != websocket.TextMessage {
-				sysAp.logger.Warn("received non-text message from web socket", "type", messageType)
+				sysAp.logger.Warn("received non-text message from web socket", "type", messageType, "message", string(message))
 				continue
 			}
 
@@ -196,6 +208,32 @@ func (sysAp *SystemAccessPoint) webSocketMessageHandler(ctx context.Context) {
 			return
 		case message := <-sysAp.webSocketMessageChannel:
 			sysAp.processMessage(message)
+		}
+	}
+}
+
+func (sysAp *SystemAccessPoint) webSocketKeepalive(ctx context.Context, conn *websocket.Conn, interval time.Duration) {
+	timer := time.NewTicker(interval)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			sysAp.logger.Log("context cancelled, stopping keepalive")
+			return
+		case <-sysAp.messageReceivedChannel:
+			// Reset the timer when a message is received
+			sysAp.logger.Debug("message received, resetting keepalive timer")
+			timer.Reset(interval)
+		case <-timer.C:
+			// Send a ping message to the server
+			sysAp.logger.Log("keepalive timer expired, sending ping message...")
+			err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(3*time.Second))
+			if err != nil {
+				sysAp.logger.Error("failed to send ping message", "error", err)
+				sysAp.emitError(err)
+				return
+			}
 		}
 	}
 }

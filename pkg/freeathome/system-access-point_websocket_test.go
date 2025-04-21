@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/pgerke/freeathome/pkg/models"
@@ -136,7 +137,7 @@ func TestSystemAccessPoint_ConnectWebSocket_Success(t *testing.T) {
 
 	// Run ConnectWebSocket in a separate goroutine
 	go func() {
-		sysAp.ConnectWebSocket(ctx)
+		sysAp.ConnectWebSocket(ctx, 1*time.Hour)
 	}()
 
 	<-ctx.Done()
@@ -197,7 +198,7 @@ func TestSystemAccessPoint_ConnectWebSocket_ContextCancelled(t *testing.T) {
 
 	// Run ConnectWebSocket in a separate goroutine
 	go func() {
-		sysAp.ConnectWebSocket(ctx)
+		sysAp.ConnectWebSocket(ctx, 1*time.Hour)
 	}()
 
 	// Wait for the expected records to be processed
@@ -227,7 +228,7 @@ func TestSystemAccessPoint_ConnectWebSocket_Failure(t *testing.T) {
 
 	// Run ConnectWebSocket in a separate goroutine
 	go func() {
-		sysAp.ConnectWebSocket(ctx)
+		sysAp.ConnectWebSocket(ctx, 1*time.Hour)
 	}()
 
 	// Wait for the context to be cancelled
