@@ -71,10 +71,7 @@ func run(ctx context.Context) int {
 	// Connect to the system access point websocket
 	sysAp.ConnectWebSocket(ctx, 30*time.Second) // TODO: make this configurable -> command line flag
 
-	// Wait for the context to be done (i.e., for the interrupt signal to be received)
-	<-ctx.Done()
 	logger.Debug("shutdown complete, bye!")
-
 	return 0
 }
 

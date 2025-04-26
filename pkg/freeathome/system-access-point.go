@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -31,6 +33,8 @@ type SystemAccessPoint struct {
 	verboseErrors bool
 	// client is the REST client that is used to communicate with the system access point.
 	client *resty.Client
+	// waitGroup is used to synchronize the web socket connection and message handling.
+	waitGroup sync.WaitGroup
 	// webSocketMessageChannel is the channel that is used to send messages received from the web socket connection.
 	webSocketMessageChannel chan []byte
 	// messageReceivedChannel is the channel that is used to signal that a message has been received.
@@ -56,8 +60,9 @@ func NewSystemAccessPoint(hostName string, userName string, password string, tls
 		tlsEnabled:              tlsEnabled,
 		verboseErrors:           verboseErrors,
 		client:                  resty.New().SetBasicAuth(userName, password),
-		webSocketMessageChannel: make(chan []byte, 100),
-		messageReceivedChannel:  make(chan struct{}, 1),
+		waitGroup:               sync.WaitGroup{},
+		webSocketMessageChannel: nil,
+		messageReceivedChannel:  nil,
 		datapointRegex:          regexp.MustCompile(models.DatapointPattern),
 	}
 }
@@ -120,57 +125,87 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveI
 	// backoff := time.Second
 	// TODO: Implement a maximum duration for reconnection attempts
 	// TODO: Implement a maximum number of reconnection attempts
-	basicAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", sysAp.client.UserInfo.Username, sysAp.client.UserInfo.Password)))
-	// Start the message handler in a separate goroutine
-	go sysAp.webSocketMessageHandler(ctx)
 
+	// Wait for all processes to finish before returning
+	defer sysAp.waitGroup.Wait()
+
+	// Start the connection loop
 	for {
 		select {
 		case <-ctx.Done():
+			// If the context is cancelled, stop the connection attempts
 			sysAp.logger.Log("context cancelled, stopping web socket connection attempts")
 			return
 		default:
-			// Create a new web socket connection
-			conn, _, err := websocket.DefaultDialer.Dial(sysAp.getWebSocketUrl(), http.Header{
-				"Authorization": []string{fmt.Sprintf("Basic %s", basicAuth)},
-			})
-
-			// Check for errors
-			if err != nil {
-				sysAp.logger.Error("failed to connect to web socket", "error", err)
-				sysAp.emitError(err)
-				// time.Sleep(backoff)
-				continue
-			}
-
-			// Start keepalive routine
-			keepaliveCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			go sysAp.webSocketKeepalive(keepaliveCtx, conn, keepaliveInterval)
-
-			// Start the message loop
-			sysAp.logger.Log("web socket connected successfully, starting message loop")
-			err = sysAp.webSocketMessageLoop(ctx, conn)
-
-			if err != nil {
-				sysAp.logger.Error("web socket message loop failed", "error", err)
-				sysAp.emitError(err)
-			}
-
-			// Close the web socket connection
-			err = conn.Close()
-			sysAp.logger.Debug("web socket closed", "error", err)
-			cancel()
+			// Attempt to establish a web socket connection
+			sysAp.webSocketConnectionLoop(ctx, keepaliveInterval)
 		}
 	}
 }
 
+// webSocketConnectionLoop establishes a web socket connection and starts the message loop.
+func (sysAp *SystemAccessPoint) webSocketConnectionLoop(ctx context.Context, keepaliveInterval time.Duration) {
+	// Add a wait group to ensure all processes are finished before returning
+	sysAp.waitGroup.Add(1)
+	defer sysAp.waitGroup.Done()
+
+	// Create a new web socket connection
+	basicAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", sysAp.client.UserInfo.Username, sysAp.client.UserInfo.Password)))
+	conn, _, err := websocket.DefaultDialer.Dial(sysAp.getWebSocketUrl(), http.Header{
+		"Authorization": []string{fmt.Sprintf("Basic %s", basicAuth)},
+	})
+
+	// Check for errors
+	if err != nil {
+		sysAp.logger.Error("failed to connect to web socket", "error", err)
+		sysAp.emitError(err)
+		// time.Sleep(backoff)
+		return
+	}
+
+	// Create connection channels
+	sysAp.messageReceivedChannel = make(chan struct{}, 1)
+	sysAp.webSocketMessageChannel = make(chan []byte, 10)
+	defer func() {
+		close(sysAp.messageReceivedChannel)
+		sysAp.messageReceivedChannel = nil
+		close(sysAp.webSocketMessageChannel)
+		sysAp.webSocketMessageChannel = nil
+	}()
+
+	// Start keepalive and message handler goroutines
+	go sysAp.webSocketKeepaliveLoop(conn, keepaliveInterval)
+	go sysAp.webSocketMessageHandler()
+
+	// Start the message loop
+	sysAp.logger.Log("web socket connected successfully, starting message loop")
+	err = sysAp.webSocketMessageLoop(ctx, conn)
+
+	// Check for errors
+	if err != nil {
+		sysAp.logger.Error("web socket message loop failed", "error", err)
+		sysAp.emitError(err)
+	}
+
+	// Close the web socket connection
+	err = conn.Close()
+	sysAp.logger.Debug("web socket connection closed", "error", err)
+}
+
 // webSocketMessageLoop starts a loop to read messages from the web socket connection.
 func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn connection) error {
+	// Verify that the connection channels are not nil
+	if sysAp.webSocketMessageChannel == nil || sysAp.messageReceivedChannel == nil {
+		errorMessage := "a connection channel is nil, cannot start message loop"
+		sysAp.logger.Error(errorMessage)
+		return errors.New(errorMessage)
+	}
+
 	// Start a loop to read messages from the web socket
 	for {
 		select {
 		case <-ctx.Done():
+			// If the context is cancelled, stop the message loop
 			sysAp.logger.Log("context cancelled, stopping message loop")
 			return nil
 		default:
@@ -200,31 +235,53 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn c
 }
 
 // processWebSocketMessage processes a message received from the web socket connection.
-func (sysAp *SystemAccessPoint) webSocketMessageHandler(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			sysAp.logger.Log("context cancelled, stopping message handler")
-			return
-		case message := <-sysAp.webSocketMessageChannel:
-			sysAp.processMessage(message)
-		}
+func (sysAp *SystemAccessPoint) webSocketMessageHandler() {
+	// Add a wait group to ensure all processes are finished before returning
+	sysAp.waitGroup.Add(1)
+	defer sysAp.waitGroup.Done()
+
+	// Verify that the webSocketMessageChannel is not nil
+	if sysAp.webSocketMessageChannel == nil {
+		sysAp.logger.Error("webSocketMessageChannel is nil, cannot start message handler")
+		return
 	}
+
+	// Start a loop to handle messages from the web socket
+	for message := range sysAp.webSocketMessageChannel {
+		sysAp.processMessage(message)
+	}
+
+	// If the channel is closed, exit the loop
+	sysAp.logger.Log("webSocketMessageChannel closed, stopping message handler")
 }
 
-func (sysAp *SystemAccessPoint) webSocketKeepalive(ctx context.Context, conn *websocket.Conn, interval time.Duration) {
+func (sysAp *SystemAccessPoint) webSocketKeepaliveLoop(conn *websocket.Conn, interval time.Duration) {
+	// Add a wait group to ensure all processes are finished before returning
+	sysAp.waitGroup.Add(1)
+	defer sysAp.waitGroup.Done()
+
+	// Verify that the messageReceivedChannel is not nil
+	if sysAp.messageReceivedChannel == nil {
+		sysAp.logger.Error("messageReceivedChannel is nil, cannot start keepalive loop")
+		return
+	}
+
+	// Create a ticker for the keepalive interval
 	timer := time.NewTicker(interval)
 	defer timer.Stop()
 
 	for {
 		select {
-		case <-ctx.Done():
-			sysAp.logger.Log("context cancelled, stopping keepalive")
-			return
-		case <-sysAp.messageReceivedChannel:
-			// Reset the timer when a message is received
-			sysAp.logger.Debug("message received, resetting keepalive timer")
-			timer.Reset(interval)
+		case _, ok := <-sysAp.messageReceivedChannel:
+			if ok {
+				// Reset the timer when a message is received
+				sysAp.logger.Debug("message received, resetting keepalive timer")
+				timer.Reset(interval)
+			} else {
+				// If the channel is closed, exit the loop
+				sysAp.logger.Log("messageReceivedChannel closed, stopping keepalive")
+				return
+			}
 		case <-timer.C:
 			// Send a ping message to the server
 			sysAp.logger.Log("keepalive timer expired, sending ping message...")
