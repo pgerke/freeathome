@@ -3,6 +3,7 @@ package freeathome
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -91,6 +92,22 @@ func TestSystemAccessPoint_WebSocketMessageHandler(t *testing.T) {
 	// Verify invalid format message handling
 	if !strings.Contains(logOutput, "Ignored datapoint with invalid key format") {
 		t.Errorf("Expected log output to contain 'Ignored datapoint with invalid key format', got: %s", logOutput)
+	}
+}
+
+func TestSystemAccessPoint_WebSocketMessageHandler_MissingChannel(t *testing.T) {
+	sysAp, buf, _ := setup(t, true)
+	defer sysAp.waitGroup.Wait()
+	sysAp.webSocketMessageChannel = nil
+
+	// Start the handler
+	sysAp.webSocketMessageHandler()
+
+	// Check the log output
+	logOutput := buf.String()
+
+	if !strings.Contains(logOutput, "webSocketMessageChannel is nil") {
+		t.Errorf("Expected log output to contain 'webSocketMessageChannel is nil', got: %s", logOutput)
 	}
 }
 
@@ -332,11 +349,118 @@ func TestSystemAccessPoint_webSocketMessageLoop_NonTextMessage(t *testing.T) {
 	}
 }
 
+func TestSystemAccessPoint_webSocketMessageLoop_MissingChannel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sysAp, buf, _ := setup(t, true)
+	sysAp.webSocketMessageChannel = nil
+	sysAp.messageReceivedChannel = make(chan struct{}, 1)
+
+	// Mock a WebSocket connection
+	conn := &MockConn{
+		messageType: websocket.TextMessage,
+		r:           []byte("valid message"),
+		err:         nil,
+	}
+
+	// Run the message loop in a separate goroutine
+	err := sysAp.webSocketMessageLoop(ctx, conn)
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
+	// Check if the error is due to the missing channel
+	if !strings.Contains(err.Error(), "a connection channel is nil, cannot start message loop") {
+		t.Errorf("Expected error 'a connection channel is nil, cannot start message loop', got: %v", err)
+	}
+
+	// Wait for the context to be done
+	cancel()
+	close(sysAp.messageReceivedChannel)
+	sysAp.messageReceivedChannel = nil
+	sysAp.waitGroup.Wait()
+
+	// Check the log output
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "a connection channel is nil, cannot start message loop") {
+		t.Errorf("Expected log output to contain 'a connection channel is nil, cannot start message loop', got: %s", logOutput)
+	}
+}
+
+func TestSystemAccessPoint_webSocketKeepaliveLoop_MissingChannel(t *testing.T) {
+	sysAp, buf, _ := setup(t, true)
+	sysAp.messageReceivedChannel = nil
+
+	// Mock a WebSocket connection
+	conn := &MockConn{
+		err: nil,
+	}
+
+	// Run the keepalive loop in a separate goroutine
+	sysAp.webSocketKeepaliveLoop(conn, 30*time.Second)
+
+	// Wait for the context to be done
+	sysAp.waitGroup.Wait()
+
+	// Check the log output
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "essageReceivedChannel is nil, cannot start keepalive loop") {
+		t.Errorf("Expected log output to contain 'essageReceivedChannel is nil, cannot start keepalive loop', got: %s", logOutput)
+	}
+}
+
+func TestSystemAccessPoint_webSocketKeepaliveLoop_SendPing(t *testing.T) {
+	sysAp, buf, _ := setup(t, true)
+	sysAp.messageReceivedChannel = make(chan struct{}, 1)
+
+	// Mock a WebSocket connection
+	conn := &MockConn{
+		err: errors.New("test error"),
+		writeMessages: []struct {
+			messageType int
+			data        []byte
+			deadline    time.Time
+		}{},
+	}
+
+	// Run the keepalive loop in a separate goroutine
+	go func() {
+		sysAp.webSocketKeepaliveLoop(conn, 250*time.Millisecond)
+	}()
+
+	time.Sleep(150 * time.Millisecond)
+	if len(conn.writeMessages) != 0 {
+		t.Errorf("Expected write message count to be 0, got: %d", len(conn.writeMessages))
+	}
+	time.Sleep(150 * time.Millisecond)
+
+	// Wait for the context to be done
+	close(sysAp.messageReceivedChannel)
+	sysAp.messageReceivedChannel = nil
+	sysAp.waitGroup.Wait()
+
+	// Check the log output
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "keepalive timer expired, sending ping") {
+		t.Errorf("Expected log output to contain 'keepalive timer expired, sending ping', got: %s", logOutput)
+	}
+
+	// Check if the ping message was sent
+	if len(conn.writeMessages) != 1 {
+		t.Errorf("Expected write message count to be 1, got: %d", len(conn.writeMessages))
+	}
+}
+
 type MockConn struct {
-	messageRead bool
-	messageType int
-	r           []byte
-	err         error
+	messageRead   bool
+	messageType   int
+	r             []byte
+	err           error
+	writeMessages []struct {
+		messageType int
+		data        []byte
+		deadline    time.Time
+	}
 }
 
 func (m *MockConn) ReadMessage() (int, []byte, error) {
@@ -346,4 +470,17 @@ func (m *MockConn) ReadMessage() (int, []byte, error) {
 
 	m.messageRead = true
 	return m.messageType, m.r, m.err
+}
+
+func (m *MockConn) WriteControl(messageType int, data []byte, deadline time.Time) error {
+	m.writeMessages = append(m.writeMessages, struct {
+		messageType int
+		data        []byte
+		deadline    time.Time
+	}{
+		messageType: messageType,
+		data:        data,
+		deadline:    deadline,
+	})
+	return m.err
 }

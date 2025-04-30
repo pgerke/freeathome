@@ -19,6 +19,7 @@ import (
 
 type connection interface {
 	ReadMessage() (messageType int, p []byte, err error)
+	WriteControl(messageType int, data []byte, deadline time.Time) error
 }
 
 // SystemAccessPoint represents a system access point that can be used to communicate with a free@home system.
@@ -255,7 +256,7 @@ func (sysAp *SystemAccessPoint) webSocketMessageHandler() {
 	sysAp.logger.Log("webSocketMessageChannel closed, stopping message handler")
 }
 
-func (sysAp *SystemAccessPoint) webSocketKeepaliveLoop(conn *websocket.Conn, interval time.Duration) {
+func (sysAp *SystemAccessPoint) webSocketKeepaliveLoop(conn connection, interval time.Duration) {
 	// Add a wait group to ensure all processes are finished before returning
 	sysAp.waitGroup.Add(1)
 	defer sysAp.waitGroup.Done()
