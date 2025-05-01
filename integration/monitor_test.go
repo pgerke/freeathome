@@ -1,3 +1,5 @@
+//go:build integration
+
 package integration
 
 import (
@@ -6,7 +8,7 @@ import (
 	"testing"
 )
 
-const bin = "./monitor-integration.test"
+const bin = "./../monitor-integration.test"
 const coverageDirectory = "./../coverage-monitor"
 
 // TestMonitor_MissingEnvs verifies the monitor's behavior when required environment variables are missing.
