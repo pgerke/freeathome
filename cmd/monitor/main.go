@@ -32,7 +32,7 @@ func main() {
 		<-sigs
 		fmt.Println("Interrupt received, shutting down gracefully...")
 		fmt.Println("Press Ctrl+C again to force exit")
-		cancel() // Triggert Kontext → Start des sauberen Shutdowns
+		cancel()
 
 		// Second signal triggers immediate, forced shutdown
 		<-sigs
