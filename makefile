@@ -26,8 +26,8 @@ monitor-build-docker:
 monitor-integration-test:
 	@echo "Running integration tests for free@home monitor v$(VERSION)-$(COMMIT)"
 	@rm -rf ./coverage-monitor && mkdir -p ./coverage-monitor
-	@go test -c -o monitor-integration.test -covermode atomic ./cmd/monitor
-	@GOCOVERDIR=./coverage-monitor RUN_MAIN=1 ./monitor-integration.test -test.run=TestMonitor_Main || true
+	@go test -c -o integration/monitor-integration.test -covermode atomic ./cmd/monitor
+	@go test -timeout 5s integration/monitor_test.go
 	@go tool covdata textfmt -i coverage-monitor -o monitor-integration.coverage.out
 	@go tool cover -html=monitor-integration.coverage.out -o monitor-integration.coverage.html
 
