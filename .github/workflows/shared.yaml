@@ -55,17 +55,20 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.24
+      - name: Install Go Coverage Merge
+        run: go install github.com/wadey/gocovmerge@latest
       - name: Run Go Test
-        run: go test -timeout 10s -coverprofile coverage.out -v ./...
+        run: make test-ci
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Coverage Profile
-          path: coverage.out
+          path: coverage.*
           retention-days: 1
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
         with:
+          files: coverage.out
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: pgerke/freeathome
       - name: SonarQube Scan

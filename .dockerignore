@@ -1,0 +1,43 @@
+# VCS
+.git
+.gitignore
+
+# Editor- und IDE config
+.vscode/
+.idea/
+
+# Build artifacts and temp data
+bin/
+dist/
+build/
+*.log
+*.tmp
+*.swp
+
+# dependencies and package managers
+node_modules/
+vendor/
+
+# Environment files
+.env
+.env.*
+*.local
+*.secret
+
+# Docker-specific files
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# CI/CD config
+.github/
+.gitlab/
+.circleci/
+.travis.yml
+
+# other files
+*.DS_Store
+*.md
+*.txt
+*.bak
+*.old

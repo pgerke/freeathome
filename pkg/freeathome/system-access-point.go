@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
+	"sync"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/gorilla/websocket"
@@ -16,6 +19,7 @@ import (
 
 type connection interface {
 	ReadMessage() (messageType int, p []byte, err error)
+	WriteControl(messageType int, data []byte, deadline time.Time) error
 }
 
 // SystemAccessPoint represents a system access point that can be used to communicate with a free@home system.
@@ -30,8 +34,12 @@ type SystemAccessPoint struct {
 	verboseErrors bool
 	// client is the REST client that is used to communicate with the system access point.
 	client *resty.Client
+	// waitGroup is used to synchronize the web socket connection and message handling.
+	waitGroup sync.WaitGroup
 	// webSocketMessageChannel is the channel that is used to send messages received from the web socket connection.
 	webSocketMessageChannel chan []byte
+	// messageReceivedChannel is the channel that is used to signal that a message has been received.
+	messageReceivedChannel chan struct{}
 	// datapointRegex is the regular expression that is used to match datapoint keys.
 	datapointRegex *regexp.Regexp
 	// onMessageHandled is a callback function that is called when a message is handled.
@@ -53,7 +61,9 @@ func NewSystemAccessPoint(hostName string, userName string, password string, tls
 		tlsEnabled:              tlsEnabled,
 		verboseErrors:           verboseErrors,
 		client:                  resty.New().SetBasicAuth(userName, password),
-		webSocketMessageChannel: make(chan []byte, 100),
+		waitGroup:               sync.WaitGroup{},
+		webSocketMessageChannel: nil,
+		messageReceivedChannel:  nil,
 		datapointRegex:          regexp.MustCompile(models.DatapointPattern),
 	}
 }
@@ -111,57 +121,92 @@ func (sysAp *SystemAccessPoint) getWebSocketUrl() string {
 }
 
 // ConnectWebSocket establishes a web socket connection to the system access point.
-func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context) {
+func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveInterval time.Duration) {
 	// TODO: Implement exponential backoff for reconnection attempts
 	// backoff := time.Second
 	// TODO: Implement a maximum duration for reconnection attempts
 	// TODO: Implement a maximum number of reconnection attempts
-	// TODO: Send a ping message to the server every 30 seconds to avoid idle timeouts (guard timer)
-	basicAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", sysAp.client.UserInfo.Username, sysAp.client.UserInfo.Password)))
-	// Start the message handler in a separate goroutine
-	go sysAp.webSocketMessageHandler(ctx)
 
+	// Wait for all processes to finish before returning
+	defer sysAp.waitGroup.Wait()
+
+	// Start the connection loop
 	for {
 		select {
 		case <-ctx.Done():
+			// If the context is cancelled, stop the connection attempts
 			sysAp.logger.Log("context cancelled, stopping web socket connection attempts")
 			return
 		default:
-			// Create a new web socket connection
-			conn, _, err := websocket.DefaultDialer.Dial(sysAp.getWebSocketUrl(), http.Header{
-				"Authorization": []string{fmt.Sprintf("Basic %s", basicAuth)},
-			})
-
-			// Check for errors
-			if err != nil {
-				sysAp.logger.Error("failed to connect to web socket", "error", err)
-				sysAp.emitError(err)
-				// time.Sleep(backoff)
-				continue
-			}
-
-			// Start the message loop
-			sysAp.logger.Log("web socket connected successfully, starting message loop")
-			err = sysAp.webSocketMessageLoop(ctx, conn)
-
-			if err != nil {
-				sysAp.logger.Error("web socket message loop failed", "error", err)
-				sysAp.emitError(err)
-			}
-
-			// Close the web socket connection
-			err = conn.Close()
-			sysAp.logger.Debug("web socket closed", "error", err)
+			// Attempt to establish a web socket connection
+			sysAp.webSocketConnectionLoop(ctx, keepaliveInterval)
 		}
 	}
 }
 
+// webSocketConnectionLoop establishes a web socket connection and starts the message loop.
+func (sysAp *SystemAccessPoint) webSocketConnectionLoop(ctx context.Context, keepaliveInterval time.Duration) {
+	// Add a wait group to ensure all processes are finished before returning
+	sysAp.waitGroup.Add(1)
+	defer sysAp.waitGroup.Done()
+
+	// Create a new web socket connection
+	basicAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", sysAp.client.UserInfo.Username, sysAp.client.UserInfo.Password)))
+	conn, _, err := websocket.DefaultDialer.Dial(sysAp.getWebSocketUrl(), http.Header{
+		"Authorization": []string{fmt.Sprintf("Basic %s", basicAuth)},
+	})
+
+	// Check for errors
+	if err != nil {
+		sysAp.logger.Error("failed to connect to web socket", "error", err)
+		sysAp.emitError(err)
+		// time.Sleep(backoff)
+		return
+	}
+
+	// Create connection channels
+	sysAp.messageReceivedChannel = make(chan struct{}, 1)
+	sysAp.webSocketMessageChannel = make(chan []byte, 10)
+	defer func() {
+		close(sysAp.messageReceivedChannel)
+		sysAp.messageReceivedChannel = nil
+		close(sysAp.webSocketMessageChannel)
+		sysAp.webSocketMessageChannel = nil
+	}()
+
+	// Start keepalive and message handler goroutines
+	go sysAp.webSocketKeepaliveLoop(conn, keepaliveInterval)
+	go sysAp.webSocketMessageHandler()
+
+	// Start the message loop
+	sysAp.logger.Log("web socket connected successfully, starting message loop")
+	err = sysAp.webSocketMessageLoop(ctx, conn)
+
+	// Check for errors
+	if err != nil {
+		sysAp.logger.Error("web socket message loop failed", "error", err)
+		sysAp.emitError(err)
+	}
+
+	// Close the web socket connection
+	err = conn.Close()
+	sysAp.logger.Debug("web socket connection closed", "error", err)
+}
+
 // webSocketMessageLoop starts a loop to read messages from the web socket connection.
 func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn connection) error {
+	// Verify that the connection channels are not nil
+	if sysAp.webSocketMessageChannel == nil || sysAp.messageReceivedChannel == nil {
+		errorMessage := "a connection channel is nil, cannot start message loop"
+		sysAp.logger.Error(errorMessage)
+		return errors.New(errorMessage)
+	}
+
 	// Start a loop to read messages from the web socket
 	for {
 		select {
 		case <-ctx.Done():
+			// If the context is cancelled, stop the message loop
 			sysAp.logger.Log("context cancelled, stopping message loop")
 			return nil
 		default:
@@ -174,9 +219,12 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn c
 				return err
 			}
 
+			// Signal that a message has been received
+			sysAp.messageReceivedChannel <- struct{}{}
+
 			// Check if the message type is text
 			if messageType != websocket.TextMessage {
-				sysAp.logger.Warn("received non-text message from web socket", "type", messageType)
+				sysAp.logger.Warn("received non-text message from web socket", "type", messageType, "message", string(message))
 				continue
 			}
 
@@ -188,14 +236,62 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn c
 }
 
 // processWebSocketMessage processes a message received from the web socket connection.
-func (sysAp *SystemAccessPoint) webSocketMessageHandler(ctx context.Context) {
+func (sysAp *SystemAccessPoint) webSocketMessageHandler() {
+	// Add a wait group to ensure all processes are finished before returning
+	sysAp.waitGroup.Add(1)
+	defer sysAp.waitGroup.Done()
+
+	// Verify that the webSocketMessageChannel is not nil
+	if sysAp.webSocketMessageChannel == nil {
+		sysAp.logger.Error("webSocketMessageChannel is nil, cannot start message handler")
+		return
+	}
+
+	// Start a loop to handle messages from the web socket
+	for message := range sysAp.webSocketMessageChannel {
+		sysAp.processMessage(message)
+	}
+
+	// If the channel is closed, exit the loop
+	sysAp.logger.Log("webSocketMessageChannel closed, stopping message handler")
+}
+
+func (sysAp *SystemAccessPoint) webSocketKeepaliveLoop(conn connection, interval time.Duration) {
+	// Add a wait group to ensure all processes are finished before returning
+	sysAp.waitGroup.Add(1)
+	defer sysAp.waitGroup.Done()
+
+	// Verify that the messageReceivedChannel is not nil
+	if sysAp.messageReceivedChannel == nil {
+		sysAp.logger.Error("messageReceivedChannel is nil, cannot start keepalive loop")
+		return
+	}
+
+	// Create a ticker for the keepalive interval
+	timer := time.NewTicker(interval)
+	defer timer.Stop()
+
 	for {
 		select {
-		case <-ctx.Done():
-			sysAp.logger.Log("context cancelled, stopping message handler")
-			return
-		case message := <-sysAp.webSocketMessageChannel:
-			sysAp.processMessage(message)
+		case _, ok := <-sysAp.messageReceivedChannel:
+			if ok {
+				// Reset the timer when a message is received
+				sysAp.logger.Debug("message received, resetting keepalive timer")
+				timer.Reset(interval)
+			} else {
+				// If the channel is closed, exit the loop
+				sysAp.logger.Log("messageReceivedChannel closed, stopping keepalive")
+				return
+			}
+		case <-timer.C:
+			// Send a ping message to the server
+			sysAp.logger.Log("keepalive timer expired, sending ping message...")
+			err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(3*time.Second))
+			if err != nil {
+				sysAp.logger.Error("failed to send ping message", "error", err)
+				sysAp.emitError(err)
+				return
+			}
 		}
 	}
 }
