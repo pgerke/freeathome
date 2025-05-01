@@ -5,6 +5,16 @@ import (
 	"testing"
 )
 
+// TestMonitor_Main tests the main function of the monitor package if the environment variable RUN_MAIN is set to "1".
+func TestMonitor_Main(t *testing.T) {
+	if os.Getenv("RUN_MAIN") != "1" {
+		t.Skip("Skipping main test")
+		return
+	}
+	main()
+}
+
+// TestMonitor_LookupEnvs tests the lookupEnvs function to ensure it correctly retrieves and validates environment variables.
 func TestMonitor_LookupEnvs(t *testing.T) {
 	// Backup original environment variables
 	originalEnv := map[string]string{
