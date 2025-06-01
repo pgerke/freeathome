@@ -6,7 +6,7 @@ ARG version=unknown
 
 WORKDIR /app
 
-# Download modules if neccessary
+# Download modules if necessary
 COPY go.mod go.sum ./
 RUN go mod download
 
