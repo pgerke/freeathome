@@ -3,6 +3,7 @@ package freeathome
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/pgerke/freeathome/pkg/models"
@@ -17,10 +19,9 @@ import (
 
 // TestSystemAccessPoint_WebSocketMessageHandler tests the webSocketMessageHandler method of SystemAccessPoint.
 func TestSystemAccessPoint_WebSocketMessageHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	sysAp, buf, _ := setup(t, true)
+	defer sysAp.waitGroup.Wait()
+	sysAp.webSocketMessageChannel = make(chan []byte, 10)
 
 	// Mock a valid WebSocketMessage
 	validMessage := models.WebSocketMessage{
@@ -63,12 +64,12 @@ func TestSystemAccessPoint_WebSocketMessageHandler(t *testing.T) {
 		sysAp.webSocketMessageChannel <- emptyMessageBytes
 		sysAp.webSocketMessageChannel <- invalidFormatMessageBytes
 		wg.Wait()
-		cancel() // Stop the handler after processing the messages
+		close(sysAp.webSocketMessageChannel)
+		sysAp.webSocketMessageChannel = nil
 	}()
 
 	// Start the handler
-	sysAp.webSocketMessageHandler(ctx)
-	cancel()
+	sysAp.webSocketMessageHandler()
 
 	// Check the log output
 	logOutput := buf.String()
@@ -94,6 +95,22 @@ func TestSystemAccessPoint_WebSocketMessageHandler(t *testing.T) {
 	}
 }
 
+func TestSystemAccessPoint_WebSocketMessageHandler_MissingChannel(t *testing.T) {
+	sysAp, buf, _ := setup(t, true)
+	defer sysAp.waitGroup.Wait()
+	sysAp.webSocketMessageChannel = nil
+
+	// Start the handler
+	sysAp.webSocketMessageHandler()
+
+	// Check the log output
+	logOutput := buf.String()
+
+	if !strings.Contains(logOutput, "webSocketMessageChannel is nil") {
+		t.Errorf("Expected log output to contain 'webSocketMessageChannel is nil', got: %s", logOutput)
+	}
+}
+
 // TestSystemAccessPoint_ConnectWebSocket_Success tests the successful connection of the WebSocket.
 func TestSystemAccessPoint_ConnectWebSocket_Success(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -106,15 +123,14 @@ func TestSystemAccessPoint_ConnectWebSocket_Success(t *testing.T) {
 	websocket.DefaultDialer = dialer
 
 	// Mock the WebSocket server
+	var conn *websocket.Conn
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		upgrader := websocket.Upgrader{}
-		conn, err := upgrader.Upgrade(w, r, nil)
+		var err error
+		conn, err = upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			t.Fatalf("Failed to upgrade WebSocket: %v", err)
 		}
-		defer func() {
-			_ = conn.Close()
-		}()
 	}))
 	defer server.Close()
 
@@ -129,17 +145,14 @@ func TestSystemAccessPoint_ConnectWebSocket_Success(t *testing.T) {
 			case record := <-records:
 				if record.Level == slog.LevelInfo && strings.Contains(record.Message, "web socket connected successfully") {
 					cancel()
+					_ = conn.Close()
 				}
 			}
 		}
 	}()
 
 	// Run ConnectWebSocket in a separate goroutine
-	go func() {
-		sysAp.ConnectWebSocket(ctx)
-	}()
-
-	<-ctx.Done()
+	sysAp.ConnectWebSocket(ctx, 1*time.Hour)
 }
 
 // TestSystemAccessPoint_ConnectWebSocket_ContextCancelled tests the behavior when the context is cancelled.
@@ -153,15 +166,14 @@ func TestSystemAccessPoint_ConnectWebSocket_ContextCancelled(t *testing.T) {
 	websocket.DefaultDialer = dialer
 
 	// Mock the WebSocket server
+	var conn *websocket.Conn
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		upgrader := websocket.Upgrader{}
-		conn, err := upgrader.Upgrade(w, r, nil)
+		var err error
+		conn, err = upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			t.Fatalf("Failed to upgrade WebSocket: %v", err)
 		}
-		defer func() {
-			_ = conn.Close()
-		}()
 	}))
 	defer server.Close()
 
@@ -170,7 +182,7 @@ func TestSystemAccessPoint_ConnectWebSocket_ContextCancelled(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	innerCtx, innerCancel := context.WithCancel(context.Background())
+	innerCtx, innerCancel := context.WithCancel(context.TODO())
 	go func() {
 		for {
 			select {
@@ -180,10 +192,11 @@ func TestSystemAccessPoint_ConnectWebSocket_ContextCancelled(t *testing.T) {
 				// Cancel the context when the web socket is connected successfully
 				if record.Level == slog.LevelInfo && strings.Contains(record.Message, "web socket connected successfully") {
 					cancel()
+					_ = conn.WriteMessage(websocket.TextMessage, []byte("test"))
 					break
 				}
 				// Send one done when the message handler is stopped
-				if record.Level == slog.LevelInfo && strings.Contains(record.Message, "context cancelled, stopping message handler") {
+				if record.Level == slog.LevelInfo && strings.Contains(record.Message, "webSocketMessageChannel closed, stopping message handler") {
 					wg.Done()
 					break
 				}
@@ -197,7 +210,7 @@ func TestSystemAccessPoint_ConnectWebSocket_ContextCancelled(t *testing.T) {
 
 	// Run ConnectWebSocket in a separate goroutine
 	go func() {
-		sysAp.ConnectWebSocket(ctx)
+		sysAp.ConnectWebSocket(ctx, 1*time.Hour)
 	}()
 
 	// Wait for the expected records to be processed
@@ -212,6 +225,7 @@ func TestSystemAccessPoint_ConnectWebSocket_Failure(t *testing.T) {
 	defer cancel()
 
 	sysAp, buf, _ := setup(t, false)
+	defer sysAp.waitGroup.Wait()
 
 	// Set an invalid host name to simulate connection failure
 	sysAp.hostName = "invalid-host"
@@ -227,7 +241,7 @@ func TestSystemAccessPoint_ConnectWebSocket_Failure(t *testing.T) {
 
 	// Run ConnectWebSocket in a separate goroutine
 	go func() {
-		sysAp.ConnectWebSocket(ctx)
+		sysAp.ConnectWebSocket(ctx, 1*time.Hour)
 	}()
 
 	// Wait for the context to be cancelled
@@ -246,6 +260,8 @@ func TestSystemAccessPoint_webSocketMessageLoop_TextMessage(t *testing.T) {
 	defer cancel()
 
 	sysAp, buf, _ := setup(t, true)
+	sysAp.webSocketMessageChannel = make(chan []byte, 10)
+	sysAp.messageReceivedChannel = make(chan struct{}, 1)
 
 	// Mock a WebSocket connection
 	conn := &MockConn{
@@ -266,6 +282,11 @@ func TestSystemAccessPoint_webSocketMessageLoop_TextMessage(t *testing.T) {
 	message := <-sysAp.webSocketMessageChannel
 	cancel()
 	<-ctx.Done()
+	close(sysAp.webSocketMessageChannel)
+	sysAp.webSocketMessageChannel = nil
+	close(sysAp.messageReceivedChannel)
+	sysAp.messageReceivedChannel = nil
+	sysAp.waitGroup.Wait()
 
 	// Check if the message is valid
 	if string(message) != "valid message" {
@@ -285,6 +306,8 @@ func TestSystemAccessPoint_webSocketMessageLoop_NonTextMessage(t *testing.T) {
 	defer cancel()
 
 	sysAp, buf, _ := setup(t, true)
+	sysAp.webSocketMessageChannel = make(chan []byte, 10)
+	sysAp.messageReceivedChannel = make(chan struct{}, 1)
 	sysAp.onError = func(err error) {
 		if strings.Contains(err.Error(), "no more messages") {
 			cancel()
@@ -313,6 +336,11 @@ func TestSystemAccessPoint_webSocketMessageLoop_NonTextMessage(t *testing.T) {
 
 	// Wait for the context to be done
 	<-ctx.Done()
+	close(sysAp.webSocketMessageChannel)
+	sysAp.webSocketMessageChannel = nil
+	close(sysAp.messageReceivedChannel)
+	sysAp.messageReceivedChannel = nil
+	sysAp.waitGroup.Wait()
 
 	// Check the log output
 	logOutput := buf.String()
@@ -321,11 +349,118 @@ func TestSystemAccessPoint_webSocketMessageLoop_NonTextMessage(t *testing.T) {
 	}
 }
 
+func TestSystemAccessPoint_webSocketMessageLoop_MissingChannel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sysAp, buf, _ := setup(t, true)
+	sysAp.webSocketMessageChannel = nil
+	sysAp.messageReceivedChannel = make(chan struct{}, 1)
+
+	// Mock a WebSocket connection
+	conn := &MockConn{
+		messageType: websocket.TextMessage,
+		r:           []byte("valid message"),
+		err:         nil,
+	}
+
+	// Run the message loop in a separate goroutine
+	err := sysAp.webSocketMessageLoop(ctx, conn)
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
+	// Check if the error is due to the missing channel
+	if !strings.Contains(err.Error(), "a connection channel is nil, cannot start message loop") {
+		t.Errorf("Expected error 'a connection channel is nil, cannot start message loop', got: %v", err)
+	}
+
+	// Wait for the context to be done
+	cancel()
+	close(sysAp.messageReceivedChannel)
+	sysAp.messageReceivedChannel = nil
+	sysAp.waitGroup.Wait()
+
+	// Check the log output
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "a connection channel is nil, cannot start message loop") {
+		t.Errorf("Expected log output to contain 'a connection channel is nil, cannot start message loop', got: %s", logOutput)
+	}
+}
+
+func TestSystemAccessPoint_webSocketKeepaliveLoop_MissingChannel(t *testing.T) {
+	sysAp, buf, _ := setup(t, true)
+	sysAp.messageReceivedChannel = nil
+
+	// Mock a WebSocket connection
+	conn := &MockConn{
+		err: nil,
+	}
+
+	// Run the keepalive loop in a separate goroutine
+	sysAp.webSocketKeepaliveLoop(conn, 30*time.Second)
+
+	// Wait for the context to be done
+	sysAp.waitGroup.Wait()
+
+	// Check the log output
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "essageReceivedChannel is nil, cannot start keepalive loop") {
+		t.Errorf("Expected log output to contain 'essageReceivedChannel is nil, cannot start keepalive loop', got: %s", logOutput)
+	}
+}
+
+func TestSystemAccessPoint_webSocketKeepaliveLoop_SendPing(t *testing.T) {
+	sysAp, buf, _ := setup(t, true)
+	sysAp.messageReceivedChannel = make(chan struct{}, 1)
+
+	// Mock a WebSocket connection
+	conn := &MockConn{
+		err: errors.New("test error"),
+		writeMessages: []struct {
+			messageType int
+			data        []byte
+			deadline    time.Time
+		}{},
+	}
+
+	// Run the keepalive loop in a separate goroutine
+	go func() {
+		sysAp.webSocketKeepaliveLoop(conn, 250*time.Millisecond)
+	}()
+
+	time.Sleep(150 * time.Millisecond)
+	if len(conn.writeMessages) != 0 {
+		t.Errorf("Expected write message count to be 0, got: %d", len(conn.writeMessages))
+	}
+	time.Sleep(150 * time.Millisecond)
+
+	// Wait for the context to be done
+	close(sysAp.messageReceivedChannel)
+	sysAp.messageReceivedChannel = nil
+	sysAp.waitGroup.Wait()
+
+	// Check the log output
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "keepalive timer expired, sending ping") {
+		t.Errorf("Expected log output to contain 'keepalive timer expired, sending ping', got: %s", logOutput)
+	}
+
+	// Check if the ping message was sent
+	if len(conn.writeMessages) != 1 {
+		t.Errorf("Expected write message count to be 1, got: %d", len(conn.writeMessages))
+	}
+}
+
 type MockConn struct {
-	messageRead bool
-	messageType int
-	r           []byte
-	err         error
+	messageRead   bool
+	messageType   int
+	r             []byte
+	err           error
+	writeMessages []struct {
+		messageType int
+		data        []byte
+		deadline    time.Time
+	}
 }
 
 func (m *MockConn) ReadMessage() (int, []byte, error) {
@@ -335,4 +470,17 @@ func (m *MockConn) ReadMessage() (int, []byte, error) {
 
 	m.messageRead = true
 	return m.messageType, m.r, m.err
+}
+
+func (m *MockConn) WriteControl(messageType int, data []byte, deadline time.Time) error {
+	m.writeMessages = append(m.writeMessages, struct {
+		messageType int
+		data        []byte
+		deadline    time.Time
+	}{
+		messageType: messageType,
+		data:        data,
+		deadline:    deadline,
+	})
+	return m.err
 }

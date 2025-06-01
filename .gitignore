@@ -25,4 +25,6 @@ go.work.sum
 .env
 
 # coverage files
+coverage-*/
 coverage.*
+*.coverage.*
