@@ -12,12 +12,12 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.4.1
+    rev: v4.8.2
     hooks:
       - id: commitizen
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: v2.0.2
+    rev: v2.1.6
     hooks:
       - id: golangci-lint
 
@@ -30,6 +30,6 @@ repos:
       - id: go-test-mod
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.24.2
+    rev: v8.26.0
     hooks:
       - id: gitleaks
