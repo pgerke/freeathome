@@ -27,6 +27,8 @@ RUN addgroup -S app && \
 # === Runtime Stage (Scratch) ===
 FROM scratch
 LABEL org.opencontainers.image.source=https://github.com/pgerke/freeathome
+LABEL org.opencontainers.image.description="The free@home monitor application"
+LABEL org.opencontainers.image.licenses=MIT
 
 # Copy the passwd file from the security provider stage
 COPY --from=security_provider /etc/passwd /etc/passwd
