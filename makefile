@@ -19,8 +19,11 @@ monitor-run-local:
 # Build the Docker image for the free@home monitor
 monitor-build-docker:
 	@echo "Building Docker image for free@home monitor v$(VERSION) from $(COMMIT) with tag $(TAG)."
-	@set -a; [ -f .env ] && . .env; set +a; go run ./cmd/monitor
 	@docker build --build-arg version=$(VERSION) --build-arg commit=$(COMMIT) -t ghcr.io/pgerke/freeathome-monitor:${TAG} -f ./cmd/monitor/Dockerfile .
+
+monitor-build-docker-multiarch:
+	@echo "Building multi-arch Docker image for free@home monitor v$(VERSION) from $(COMMIT) with tag $(TAG)."
+	@docker buildx build --platform linux/amd64,linux/arm64 --build-arg version=$(VERSION) --build-arg commit=$(COMMIT) -t ghcr.io/pgerke/freeathome-monitor:${TAG} -f ./cmd/monitor/Dockerfile --push .
 
 # Run the free@home monitor integration tests
 monitor-integration-test:
