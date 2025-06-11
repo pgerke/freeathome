@@ -1,0 +1,85 @@
+{
+  "00000000-0000-0000-0000-000000000000": {
+    "devices": {
+      "600028E1ED13": {
+        "channels": {
+          "ch0000": {
+            "displayName": "Test",
+            "functionID": "0007",
+            "inputs": {
+              "idp0000": {
+                "pairingID": 1,
+                "value": "0"
+              },
+              "idp0001": {
+                "pairingID": 2,
+                "value": "0"
+              },
+              "idp0002": {
+                "pairingID": 3,
+                "value": "0"
+              },
+              "idp0003": {
+                "pairingID": 4,
+                "value": "0"
+              },
+              "idp0004": {
+                "pairingID": 6,
+                "value": "0"
+              },
+              "idp0005": {
+                "pairingID": 48,
+                "value": ""
+              },
+              "idp0006": {
+                "pairingID": 323,
+                "value": ""
+              },
+              "idp0007": {
+                "pairingID": 333,
+                "value": ""
+              },
+              "idp0008": {
+                "pairingID": 334,
+                "value": ""
+              }
+            },
+            "outputs": {
+              "odp0000": {
+                "pairingID": 256,
+                "value": "0"
+              },
+              "odp0001": {
+                "pairingID": 257,
+                "value": "0"
+              },
+              "odp0002": {
+                "pairingID": 273,
+                "value": ""
+              },
+              "odp0003": {
+                "pairingID": 305,
+                "value": ""
+              },
+              "odp0004": {
+                "pairingID": 321,
+                "value": ""
+              },
+              "odp0005": {
+                "pairingID": 335,
+                "value": ""
+              },
+              "odp0006": {
+                "pairingID": 336,
+                "value": ""
+              }
+            }
+          }
+        },
+        "displayName": "Test",
+        "nativeId": "47110815AA",
+        "unresponsive": false
+      }
+    }
+  }
+}

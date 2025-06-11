@@ -25,7 +25,6 @@ func newVirtualDevice(t *testing.T) *models.VirtualDevice {
 }
 
 func TestSystemAccessPointCreateVirtualDevice(t *testing.T) {
-
 	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
@@ -63,7 +62,7 @@ func TestSystemAccessPointCreateVirtualDevice(t *testing.T) {
 	}
 
 	// Check if the result is not nil and contains the expected data
-	if *result == nil {
+	if result == nil || *result == nil {
 		t.Error("Expected non-nil result")
 	}
 	if len(*result) != 1 {

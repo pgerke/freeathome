@@ -443,9 +443,9 @@ func (sysAp *SystemAccessPoint) GetDeviceList() (*models.DeviceList, error) {
 }
 
 // GetDevice retrieves a device with the specified serial number from the system access point.
-// It sends a GET request to the appropriate endpoint and parses the response into a Device model.
-// Returns a pointer to the Device and an error if the request fails or the response cannot be parsed.
-func (sysAp *SystemAccessPoint) GetDevice(serial string) (*models.Device, error) {
+// It sends a GET request to the appropriate endpoint and parses the response into a DeviceResponse model.
+// Returns a pointer to the DeviceResponse and an error if the request fails or the response cannot be parsed.
+func (sysAp *SystemAccessPoint) GetDevice(serial string) (*models.DeviceResponse, error) {
 	resp, err := sysAp.client.R().
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial}).
 		Get(sysAp.GetUrl("device/{uuid}/{serial}"))
@@ -462,13 +462,13 @@ func (sysAp *SystemAccessPoint) GetDevice(serial string) (*models.Device, error)
 		return nil, fmt.Errorf("failed to get device: %s", resp.String())
 	}
 
-	var device models.Device
-	if err := json.Unmarshal(resp.Body(), &device); err != nil {
+	var deviceResponse models.DeviceResponse
+	if err := json.Unmarshal(resp.Body(), &deviceResponse); err != nil {
 		sysAp.logger.Error("failed to parse device", "error", err)
 		return nil, err
 	}
 
-	return &device, nil
+	return &deviceResponse, nil
 }
 
 // GetDatapoint retrieves a datapoint from the System Access Point using the provided serial number, channel, and datapoint identifiers.

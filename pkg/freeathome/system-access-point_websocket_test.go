@@ -256,8 +256,8 @@ func TestSystemAccessPointConnectWebSocketFailure(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPointwebSocketMessageLoopTextMessage tests the webSocketMessageLoop method for text messages.
-func TestSystemAccessPointwebSocketMessageLoopTextMessage(t *testing.T) {
+// TestSystemAccessPointWebSocketMessageLoopTextMessage tests the webSocketMessageLoop method for text messages.
+func TestSystemAccessPointWebSocketMessageLoopTextMessage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -302,8 +302,8 @@ func TestSystemAccessPointwebSocketMessageLoopTextMessage(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPointwebSocketMessageLoopNonTextMessage tests the webSocketMessageLoop method for non-text messages.
-func TestSystemAccessPointwebSocketMessageLoopNonTextMessage(t *testing.T) {
+// TestSystemAccessPointWebSocketMessageLoopNonTextMessage tests the webSocketMessageLoop method for non-text messages.
+func TestSystemAccessPointWebSocketMessageLoopNonTextMessage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -351,7 +351,7 @@ func TestSystemAccessPointwebSocketMessageLoopNonTextMessage(t *testing.T) {
 	}
 }
 
-func TestSystemAccessPointwebSocketMessageLoopMissingChannel(t *testing.T) {
+func TestSystemAccessPointWebSocketMessageLoopMissingChannel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
