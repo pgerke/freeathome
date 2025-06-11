@@ -164,25 +164,7 @@ func (sysAp *SystemAccessPoint) CreateVirtualDevice(serial string, virtualDevice
 		SetBody(virtualDevice).
 		Put(sysAp.GetUrl("virtualdevice/{uuid}/{serial}"))
 
-	// Check for errors
-	if err != nil {
-		sysAp.logger.Error("failed to create virtual device", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	if resp.IsError() {
-		sysAp.logger.Error("failed to create virtual device", "status", resp.Status(), "body", resp.String())
-		return nil, fmt.Errorf("failed to create virtual device: %s", resp.String())
-	}
-
-	var virtualDeviceResponse models.VirtualDeviceResponse
-	if err := json.Unmarshal(resp.Body(), &virtualDeviceResponse); err != nil {
-		sysAp.logger.Error("failed to parse virtual device response", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-	return &virtualDeviceResponse, nil
+	return DeserializeRestResponse[models.VirtualDeviceResponse](sysAp, resp, err, "failed to create virtual device")
 }
 
 // webSocketConnectionLoop establishes a web socket connection and starts the message loop.
@@ -389,26 +371,7 @@ func (sysAp *SystemAccessPoint) processMessage(message []byte) {
 func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error) {
 	resp, err := sysAp.client.R().Get(sysAp.GetUrl("configuration"))
 
-	// Check for errors
-	if err != nil {
-		sysAp.logger.Error("failed to get configuration", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	if resp.IsError() {
-		sysAp.logger.Error("failed to get configuration", "status", resp.Status(), "body", resp.String())
-		return nil, fmt.Errorf("failed to get configuration: %s", resp.String())
-	}
-
-	var configuration models.Configuration
-	if err := json.Unmarshal(resp.Body(), &configuration); err != nil {
-		sysAp.logger.Error("failed to parse configuration", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	return &configuration, nil
+	return DeserializeRestResponse[models.Configuration](sysAp, resp, err, "failed to get configuration")
 }
 
 // GetDeviceList retrieves the list of devices from the system access point.
@@ -421,25 +384,7 @@ func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error
 func (sysAp *SystemAccessPoint) GetDeviceList() (*models.DeviceList, error) {
 	resp, err := sysAp.client.R().Get(sysAp.GetUrl("devicelist"))
 
-	// Check for errors
-	if err != nil {
-		sysAp.logger.Error("failed to get device list", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	if resp.IsError() {
-		sysAp.logger.Error("failed to get device list", "status", resp.Status(), "body", resp.String())
-		return nil, fmt.Errorf("failed to get device list: %s", resp.String())
-	}
-
-	var deviceList models.DeviceList
-	if err := json.Unmarshal(resp.Body(), &deviceList); err != nil {
-		sysAp.logger.Error("failed to parse device list", "error", err)
-		return nil, err
-	}
-
-	return &deviceList, nil
+	return DeserializeRestResponse[models.DeviceList](sysAp, resp, err, "failed to get device list")
 }
 
 // GetDevice retrieves a device with the specified serial number from the system access point.
@@ -450,25 +395,7 @@ func (sysAp *SystemAccessPoint) GetDevice(serial string) (*models.DeviceResponse
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial}).
 		Get(sysAp.GetUrl("device/{uuid}/{serial}"))
 
-	// Check for errors
-	if err != nil {
-		sysAp.logger.Error("failed to get device", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	if resp.IsError() {
-		sysAp.logger.Error("failed to get device", "status", resp.Status(), "body", resp.String())
-		return nil, fmt.Errorf("failed to get device: %s", resp.String())
-	}
-
-	var deviceResponse models.DeviceResponse
-	if err := json.Unmarshal(resp.Body(), &deviceResponse); err != nil {
-		sysAp.logger.Error("failed to parse device", "error", err)
-		return nil, err
-	}
-
-	return &deviceResponse, nil
+	return DeserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to get device")
 }
 
 // GetDatapoint retrieves a datapoint from the System Access Point using the provided serial number, channel, and datapoint identifiers.
@@ -490,26 +417,7 @@ func (sysAp *SystemAccessPoint) GetDatapoint(serial string, channel string, data
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial, "channel": channel, "datapoint": datapoint}).
 		Get(sysAp.GetUrl("datapoint/{uuid}/{serial}.{channel}.{datapoint}"))
 
-	// Check for errors
-	if err != nil {
-		sysAp.logger.Error("failed to get datapoint", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	if resp.IsError() {
-		sysAp.logger.Error("failed to get datapoint", "status", resp.Status(), "body", resp.String())
-		return nil, fmt.Errorf("failed to get datapoint: %s", resp.String())
-	}
-
-	var datapointResponse models.GetDataPointResponse
-	if err := json.Unmarshal(resp.Body(), &datapointResponse); err != nil {
-		sysAp.logger.Error("failed to parse datapoint", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	return &datapointResponse, nil
+	return DeserializeRestResponse[models.GetDataPointResponse](sysAp, resp, err, "failed to get datapoint")
 }
 
 // SetDatapoint sets the value of a specified datapoint for a given device channel.
@@ -532,25 +440,7 @@ func (sysAp *SystemAccessPoint) SetDatapoint(serial string, channel string, data
 		SetBody(value).
 		Put(sysAp.GetUrl("datapoint/{uuid}/{serial}.{channel}.{datapoint}"))
 
-	// Check for errors
-	if err != nil {
-		sysAp.logger.Error("failed to set datapoint", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	if resp.IsError() {
-		sysAp.logger.Error("failed to set datapoint", "status", resp.Status(), "body", resp.String())
-		return nil, fmt.Errorf("failed to set datapoint: %s", resp.String())
-	}
-
-	var datapointResponse models.SetDataPointResponse
-	if err := json.Unmarshal(resp.Body(), &datapointResponse); err != nil {
-		sysAp.logger.Error("failed to parse set datapoint response", "error", err)
-		return nil, err
-	}
-
-	return &datapointResponse, nil
+	return DeserializeRestResponse[models.SetDataPointResponse](sysAp, resp, err, "failed to set datapoint")
 }
 
 // TriggerProxyDevice sends a request to trigger an action on a proxy device identified by its class and serial number.
@@ -570,26 +460,7 @@ func (sysAp *SystemAccessPoint) TriggerProxyDevice(class string, serial string, 
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "class": class, "serial": serial, "action": action}).
 		Get(sysAp.GetUrl("proxydevice/{uuid}/{class}/{serial}/action/{action}"))
 
-	// Check for errors
-	if err != nil {
-		sysAp.logger.Error("failed to trigger proxy device", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	if resp.IsError() {
-		sysAp.logger.Error("failed to trigger proxy device", "status", resp.Status(), "body", resp.String())
-		return nil, fmt.Errorf("failed to trigger proxy device: %s", resp.String())
-	}
-
-	var deviceResponse models.DeviceResponse
-	if err := json.Unmarshal(resp.Body(), &deviceResponse); err != nil {
-		sysAp.logger.Error("failed to parse proxy device response", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	return &deviceResponse, nil
+	return DeserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to trigger proxy device")
 }
 
 // SetProxyDeviceValue sets the value of a proxy device identified by its class and serial number.
@@ -608,24 +479,28 @@ func (sysAp *SystemAccessPoint) SetProxyDeviceValue(class string, serial string,
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "class": class, "serial": serial, "value": value}).
 		Put(sysAp.GetUrl("proxydevice/{uuid}/{class}/{serial}/value/{value}"))
 
+	return DeserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to set proxy device value")
+}
+
+func DeserializeRestResponse[T any](sysAp *SystemAccessPoint, resp *resty.Response, err error, errorMessage string) (*T, error) {
 	// Check for errors
 	if err != nil {
-		sysAp.logger.Error("failed to set proxy device value", "error", err)
+		sysAp.logger.Error(errorMessage, "error", err)
 		sysAp.emitError(err)
 		return nil, err
 	}
 
 	if resp.IsError() {
-		sysAp.logger.Error("failed to set proxy device value", "status", resp.Status(), "body", resp.String())
-		return nil, fmt.Errorf("failed to set proxy device value: %s", resp.String())
+		sysAp.logger.Error(errorMessage, "status", resp.Status(), "body", resp.String())
+		return nil, fmt.Errorf("%s: %s", errorMessage, resp.String())
 	}
 
-	var deviceResponse models.DeviceResponse
-	if err := json.Unmarshal(resp.Body(), &deviceResponse); err != nil {
-		sysAp.logger.Error("failed to parse proxy device response", "error", err)
+	var object T
+	if err := json.Unmarshal(resp.Body(), &object); err != nil {
+		sysAp.logger.Error("failed to parse response body", "error", err)
 		sysAp.emitError(err)
 		return nil, err
 	}
 
-	return &deviceResponse, nil
+	return &object, nil
 }

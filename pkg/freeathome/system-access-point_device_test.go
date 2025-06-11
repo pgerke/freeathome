@@ -161,7 +161,7 @@ func TestSystemAccessPointGetDeviceUnmarshalError(t *testing.T) {
 
 	// Check if the log output contains the expected error message
 	logOutput := buf.String()
-	if !strings.Contains(logOutput, "msg=\"failed to parse device\"") ||
+	if !strings.Contains(logOutput, "msg=\"failed to parse response body\"") ||
 		!strings.Contains(logOutput, "level=ERROR") {
 		t.Errorf(unexpectedLogOutput, logOutput)
 	}
