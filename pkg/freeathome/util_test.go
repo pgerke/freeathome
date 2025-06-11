@@ -11,6 +11,11 @@ import (
 	"testing"
 )
 
+const expectedErrorGotNil = "Expected error, got nil"
+const expectedErrorGotValue = "Expected error '%s', got '%v'"
+const expectedNil = "Expected nil result"
+const unexpectedLogOutput = "Unexpected log output, got: %s"
+
 // setup initializes a SystemAccessPoint with a mock logger and returns it along with a buffer to capture log output.
 func setup(t *testing.T, tlsEnabled bool) (*SystemAccessPoint, *bytes.Buffer, chan slog.Record) {
 	t.Helper()

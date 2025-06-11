@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// TestMonitor_Main tests the main function of the monitor package if the environment variable RUN_MAIN is set to "1".
-func TestMonitor_Main(t *testing.T) {
+// TestMonitorMain tests the main function of the monitor package if the environment variable RUN_MAIN is set to "1".
+func TestMonitorMain(t *testing.T) {
 	if os.Getenv("RUN_MAIN") != "1" {
 		t.Skip("Skipping main test")
 		return
@@ -14,8 +14,8 @@ func TestMonitor_Main(t *testing.T) {
 	main()
 }
 
-// TestMonitor_LookupEnvs tests the lookupEnvs function to ensure it correctly retrieves and validates environment variables.
-func TestMonitor_LookupEnvs(t *testing.T) {
+// TestMonitorLookupEnvs tests the lookupEnvs function to ensure it correctly retrieves and validates environment variables.
+func TestMonitorLookupEnvs(t *testing.T) {
 	// Backup original environment variables
 	originalEnv := map[string]string{
 		"SYSAP_HOST":     os.Getenv("SYSAP_HOST"),

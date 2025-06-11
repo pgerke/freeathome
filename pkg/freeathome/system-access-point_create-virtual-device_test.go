@@ -24,7 +24,8 @@ func newVirtualDevice(t *testing.T) *models.VirtualDevice {
 	}
 }
 
-func TestSystemAccessPoint_CreateVirtualDevice(t *testing.T) {
+func TestSystemAccessPointCreateVirtualDevice(t *testing.T) {
+
 	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
@@ -76,7 +77,7 @@ func TestSystemAccessPoint_CreateVirtualDevice(t *testing.T) {
 	}
 }
 
-func TestSystemAccessPoint_CreateVirtualDeviceCallError(t *testing.T) {
+func TestSystemAccessPointCreateVirtualDeviceCallError(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
@@ -92,7 +93,7 @@ func TestSystemAccessPoint_CreateVirtualDeviceCallError(t *testing.T) {
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, "msg=\"failed to create virtual device\"") ||
 		!strings.Contains(logOutput, "error=\"Put \\\"https://localhost/fhapi/v1/api/rest/virtualdevice/00000000-0000-0000-0000-000000000000/6000D2CB27B2\\\": Test Error") {
-		t.Errorf("Unexpected log output, got: %s", logOutput)
+		t.Errorf(unexpectedLogOutput, logOutput)
 	}
 
 	// Check if result is nil and error is not nil
@@ -100,17 +101,17 @@ func TestSystemAccessPoint_CreateVirtualDeviceCallError(t *testing.T) {
 		t.Errorf("Expected result to be nil, got %v", result)
 	}
 	if err == nil {
-		t.Fatal("Expected error, got nil")
+		t.Fatal(expectedErrorGotNil)
 	}
 
 	// Check if the error message is correct
 	expected := "Put \"https://localhost/fhapi/v1/api/rest/virtualdevice/00000000-0000-0000-0000-000000000000/6000D2CB27B2\": Test Error"
 	if err.Error() != expected {
-		t.Errorf("Expected error '%s', got '%v'", expected, err)
+		t.Errorf(expectedErrorGotValue, expected, err)
 	}
 }
 
-func TestSystemAccessPoint_CreateVirtualDeviceErrorResponse(t *testing.T) {
+func TestSystemAccessPointCreateVirtualDeviceErrorResponse(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
@@ -134,15 +135,15 @@ func TestSystemAccessPoint_CreateVirtualDeviceErrorResponse(t *testing.T) {
 		!strings.Contains(logOutput, "level=ERROR") ||
 		!strings.Contains(logOutput, "status=\"Internal Server Error\"") ||
 		!strings.Contains(logOutput, "body=\"Internal Server Error\"") {
-		t.Errorf("Unexpected log output, got: %s", logOutput)
+		t.Errorf(unexpectedLogOutput, logOutput)
 	}
 
 	// Check if result is nil and error is not nil
 	if result != nil {
-		t.Error("Expected nil result")
+		t.Error(expectedNil)
 	}
 	if err == nil {
-		t.Error("Expected error, got nil")
+		t.Error(expectedErrorGotNil)
 	}
 
 	// Check if the request method and URL are correct
@@ -157,11 +158,11 @@ func TestSystemAccessPoint_CreateVirtualDeviceErrorResponse(t *testing.T) {
 	// Check if the error message is correct
 	expected := "failed to create virtual device: Internal Server Error"
 	if err.Error() != expected {
-		t.Errorf("Expected error '%s', got '%v'", expected, err)
+		t.Errorf(expectedErrorGotValue, expected, err)
 	}
 }
 
-func TestSystemAccessPoint_CreateVirtualDeviceUnmarshalError(t *testing.T) {
+func TestSystemAccessPointCreateVirtualDeviceUnmarshalError(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
@@ -181,20 +182,20 @@ func TestSystemAccessPoint_CreateVirtualDeviceUnmarshalError(t *testing.T) {
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, "msg=\"failed to parse virtual device response\"") ||
 		!strings.Contains(logOutput, "level=ERROR") {
-		t.Errorf("Unexpected log output, got: %s", logOutput)
+		t.Errorf(unexpectedLogOutput, logOutput)
 	}
 
 	// Check if result is nil and error is not nil
 	if result != nil {
-		t.Error("Expected nil result")
+		t.Error(expectedNil)
 	}
 	if err == nil {
-		t.Fatal("Expected error, got nil")
+		t.Fatal(expectedErrorGotNil)
 	}
 
 	// Check if the error message is correct
 	expected := "json: cannot unmarshal number into Go struct field CreatedVirtualDevice.devices.serial of type string"
 	if err.Error() != expected {
-		t.Errorf("Expected error '%s', got '%v'", expected, err)
+		t.Errorf(expectedErrorGotValue, expected, err)
 	}
 }

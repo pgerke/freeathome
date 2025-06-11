@@ -10,8 +10,8 @@ import (
 	"github.com/pgerke/freeathome/pkg/models"
 )
 
-// TestSystemAccessPoint_GetConfiguration tests the GetConfiguration method of SystemAccessPoint.
-func TestSystemAccessPoint_GetConfiguration(t *testing.T) {
+// TestSystemAccessPointGetConfiguration tests the GetConfiguration method of SystemAccessPoint.
+func TestSystemAccessPointGetConfiguration(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
@@ -58,8 +58,8 @@ func TestSystemAccessPoint_GetConfiguration(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPoint_GetConfigurationCallError tests the GetConfiguration method of SystemAccessPoint
-func TestSystemAccessPoint_GetConfigurationCallError(t *testing.T) {
+// TestSystemAccessPointGetConfigurationCallError tests the GetConfiguration method of SystemAccessPoint
+func TestSystemAccessPointGetConfigurationCallError(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
@@ -74,25 +74,25 @@ func TestSystemAccessPoint_GetConfigurationCallError(t *testing.T) {
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, "msg=\"failed to get configuration\"") ||
 		!strings.Contains(logOutput, "error=\"Get \\\"https://localhost/fhapi/v1/api/rest/configuration\\\": Test Error\"") {
-		t.Errorf("Unexpected log output, got: %s", logOutput)
+		t.Errorf(unexpectedLogOutput, logOutput)
 	}
 	// Check if result is nil and error is not nil
 	if result != nil {
-		t.Error("Expected nil result")
+		t.Error(expectedNil)
 	}
 	if err == nil {
-		t.Error("Expected error, got nil")
+		t.Error(expectedErrorGotNil)
 	}
 
 	// Check if the error message is correct
 	expected := "Get \"https://localhost/fhapi/v1/api/rest/configuration\": Test Error"
 	if err.Error() != expected {
-		t.Errorf("Expected error '%s', got '%v'", expected, err)
+		t.Errorf(expectedErrorGotValue, expected, err)
 	}
 }
 
-// TestSystemAccessPoint_GetConfigurationErrorResponse tests the GetConfiguration method of SystemAccessPoint
-func TestSystemAccessPoint_GetConfigurationErrorResponse(t *testing.T) {
+// TestSystemAccessPointGetConfigurationErrorResponse tests the GetConfiguration method of SystemAccessPoint
+func TestSystemAccessPointGetConfigurationErrorResponse(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
@@ -114,15 +114,15 @@ func TestSystemAccessPoint_GetConfigurationErrorResponse(t *testing.T) {
 		!strings.Contains(logOutput, "level=ERROR") ||
 		!strings.Contains(logOutput, "status=\"Internal Server Error\"") ||
 		!strings.Contains(logOutput, "body=\"Internal Server Error\"") {
-		t.Errorf("Unexpected log output, got: %s", logOutput)
+		t.Errorf(unexpectedLogOutput, logOutput)
 	}
 
 	// Check if result is nil and error is not nil
 	if err == nil {
-		t.Fatal("Expected error, got nil")
+		t.Fatal(expectedErrorGotNil)
 	}
 	if result != nil {
-		t.Error("Expected nil result")
+		t.Error(expectedNil)
 	}
 
 	// Check if the request method and URL are correct
@@ -137,12 +137,12 @@ func TestSystemAccessPoint_GetConfigurationErrorResponse(t *testing.T) {
 	// Check if the error message is correct
 	expected := "failed to get configuration: Internal Server Error"
 	if err.Error() != expected {
-		t.Errorf("Expected error '%s', got '%v'", expected, err)
+		t.Errorf(expectedErrorGotValue, expected, err)
 	}
 }
 
-// TestSystemAccessPoint_GetConfigurationUnmarshalError tests the GetConfiguration method of SystemAccessPoint
-func TestSystemAccessPoint_GetConfigurationUnmarshalError(t *testing.T) {
+// TestSystemAccessPointGetConfigurationUnmarshalError tests the GetConfiguration method of SystemAccessPoint
+func TestSystemAccessPointGetConfigurationUnmarshalError(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
@@ -162,20 +162,20 @@ func TestSystemAccessPoint_GetConfigurationUnmarshalError(t *testing.T) {
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, "msg=\"failed to parse configuration\"") ||
 		!strings.Contains(logOutput, "level=ERROR") {
-		t.Errorf("Unexpected log output, got: %s", logOutput)
+		t.Errorf(unexpectedLogOutput, logOutput)
 	}
 
 	// Check if result is nil and error is not nil
 	if err == nil {
-		t.Fatal("Expected error, got nil")
+		t.Fatal(expectedErrorGotNil)
 	}
 	if result != nil {
-		t.Error("Expected nil result")
+		t.Error(expectedNil)
 	}
 
 	// Check if the error message is correct
 	expected := "json: cannot unmarshal array into Go value of type models.SysAP"
 	if err.Error() != expected {
-		t.Errorf("Expected error '%s', got '%v'", expected, err)
+		t.Errorf(expectedErrorGotValue, expected, err)
 	}
 }

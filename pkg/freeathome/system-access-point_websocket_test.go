@@ -17,8 +17,10 @@ import (
 	"github.com/pgerke/freeathome/pkg/models"
 )
 
-// TestSystemAccessPoint_WebSocketMessageHandler tests the webSocketMessageHandler method of SystemAccessPoint.
-func TestSystemAccessPoint_WebSocketMessageHandler(t *testing.T) {
+const testMessageValid = "valid message"
+
+// TestSystemAccessPointWebSocketMessageHandler tests the webSocketMessageHandler method of SystemAccessPoint.
+func TestSystemAccessPointWebSocketMessageHandler(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	defer sysAp.waitGroup.Wait()
 	sysAp.webSocketMessageChannel = make(chan []byte, 10)
@@ -95,7 +97,7 @@ func TestSystemAccessPoint_WebSocketMessageHandler(t *testing.T) {
 	}
 }
 
-func TestSystemAccessPoint_WebSocketMessageHandler_MissingChannel(t *testing.T) {
+func TestSystemAccessPointWebSocketMessageHandlerMissingChannel(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	defer sysAp.waitGroup.Wait()
 	sysAp.webSocketMessageChannel = nil
@@ -111,8 +113,8 @@ func TestSystemAccessPoint_WebSocketMessageHandler_MissingChannel(t *testing.T) 
 	}
 }
 
-// TestSystemAccessPoint_ConnectWebSocket_Success tests the successful connection of the WebSocket.
-func TestSystemAccessPoint_ConnectWebSocket_Success(t *testing.T) {
+// TestSystemAccessPointConnectWebSocketSuccess tests the successful connection of the WebSocket.
+func TestSystemAccessPointConnectWebSocketSuccess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -155,8 +157,8 @@ func TestSystemAccessPoint_ConnectWebSocket_Success(t *testing.T) {
 	sysAp.ConnectWebSocket(ctx, 1*time.Hour)
 }
 
-// TestSystemAccessPoint_ConnectWebSocket_ContextCancelled tests the behavior when the context is cancelled.
-func TestSystemAccessPoint_ConnectWebSocket_ContextCancelled(t *testing.T) {
+// TestSystemAccessPointConnectWebSocketContextCancelled tests the behavior when the context is cancelled.
+func TestSystemAccessPointConnectWebSocketContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	sysAp, _, records := setup(t, false)
@@ -219,8 +221,8 @@ func TestSystemAccessPoint_ConnectWebSocket_ContextCancelled(t *testing.T) {
 	innerCancel()
 }
 
-// TestSystemAccessPoint_ConnectWebSocket_Failure tests the behavior when the WebSocket connection fails.
-func TestSystemAccessPoint_ConnectWebSocket_Failure(t *testing.T) {
+// TestSystemAccessPointConnectWebSocketFailure tests the behavior when the WebSocket connection fails.
+func TestSystemAccessPointConnectWebSocketFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -254,8 +256,8 @@ func TestSystemAccessPoint_ConnectWebSocket_Failure(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPoint_webSocketMessageLoop_TextMessage tests the webSocketMessageLoop method for text messages.
-func TestSystemAccessPoint_webSocketMessageLoop_TextMessage(t *testing.T) {
+// TestSystemAccessPointwebSocketMessageLoopTextMessage tests the webSocketMessageLoop method for text messages.
+func TestSystemAccessPointwebSocketMessageLoopTextMessage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -266,7 +268,7 @@ func TestSystemAccessPoint_webSocketMessageLoop_TextMessage(t *testing.T) {
 	// Mock a WebSocket connection
 	conn := &MockConn{
 		messageType: websocket.TextMessage,
-		r:           []byte("valid message"),
+		r:           []byte(testMessageValid),
 		err:         nil,
 	}
 
@@ -274,7 +276,7 @@ func TestSystemAccessPoint_webSocketMessageLoop_TextMessage(t *testing.T) {
 	go func() {
 		err := sysAp.webSocketMessageLoop(ctx, conn)
 		if err == nil {
-			t.Errorf("Expected error, got nil")
+			t.Error(expectedErrorGotNil)
 		}
 	}()
 
@@ -289,7 +291,7 @@ func TestSystemAccessPoint_webSocketMessageLoop_TextMessage(t *testing.T) {
 	sysAp.waitGroup.Wait()
 
 	// Check if the message is valid
-	if string(message) != "valid message" {
+	if string(message) != testMessageValid {
 		t.Errorf("Expected message 'valid message', got: %s", string(message))
 	}
 
@@ -300,8 +302,8 @@ func TestSystemAccessPoint_webSocketMessageLoop_TextMessage(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPoint_webSocketMessageLoop_NonTextMessage tests the webSocketMessageLoop method for non-text messages.
-func TestSystemAccessPoint_webSocketMessageLoop_NonTextMessage(t *testing.T) {
+// TestSystemAccessPointwebSocketMessageLoopNonTextMessage tests the webSocketMessageLoop method for non-text messages.
+func TestSystemAccessPointwebSocketMessageLoopNonTextMessage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -330,7 +332,7 @@ func TestSystemAccessPoint_webSocketMessageLoop_NonTextMessage(t *testing.T) {
 	go func() {
 		err := sysAp.webSocketMessageLoop(ctx, conn)
 		if err == nil {
-			t.Errorf("Expected error, got nil")
+			t.Error(expectedErrorGotNil)
 		}
 	}()
 
@@ -349,7 +351,7 @@ func TestSystemAccessPoint_webSocketMessageLoop_NonTextMessage(t *testing.T) {
 	}
 }
 
-func TestSystemAccessPoint_webSocketMessageLoop_MissingChannel(t *testing.T) {
+func TestSystemAccessPointwebSocketMessageLoopMissingChannel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -360,14 +362,14 @@ func TestSystemAccessPoint_webSocketMessageLoop_MissingChannel(t *testing.T) {
 	// Mock a WebSocket connection
 	conn := &MockConn{
 		messageType: websocket.TextMessage,
-		r:           []byte("valid message"),
+		r:           []byte(testMessageValid),
 		err:         nil,
 	}
 
 	// Run the message loop in a separate goroutine
 	err := sysAp.webSocketMessageLoop(ctx, conn)
 	if err == nil {
-		t.Errorf("Expected error, got nil")
+		t.Error(expectedErrorGotNil)
 	}
 	// Check if the error is due to the missing channel
 	if !strings.Contains(err.Error(), "a connection channel is nil, cannot start message loop") {
@@ -387,7 +389,7 @@ func TestSystemAccessPoint_webSocketMessageLoop_MissingChannel(t *testing.T) {
 	}
 }
 
-func TestSystemAccessPoint_webSocketKeepaliveLoop_MissingChannel(t *testing.T) {
+func TestSystemAccessPointwebSocketKeepaliveLoopMissingChannel(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	sysAp.messageReceivedChannel = nil
 
@@ -409,7 +411,7 @@ func TestSystemAccessPoint_webSocketKeepaliveLoop_MissingChannel(t *testing.T) {
 	}
 }
 
-func TestSystemAccessPoint_webSocketKeepaliveLoop_SendPing(t *testing.T) {
+func TestSystemAccessPointwebSocketKeepaliveLoopSendPing(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	sysAp.messageReceivedChannel = make(chan struct{}, 1)
 

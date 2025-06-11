@@ -10,8 +10,8 @@ import (
 	"github.com/pgerke/freeathome/pkg/models"
 )
 
-// TestSystemAccessPoint_GetDeviceList tests the GetDeviceList method of SystemAccessPoint.
-func TestSystemAccessPoint_GetDeviceList(t *testing.T) {
+// TestSystemAccessPointGetDeviceList tests the GetDeviceList method of SystemAccessPoint.
+func TestSystemAccessPointGetDeviceList(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
@@ -58,8 +58,8 @@ func TestSystemAccessPoint_GetDeviceList(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPoint_GetDeviceListCallError tests the GetDeviceList method of SystemAccessPoint
-func TestSystemAccessPoint_GetDeviceListCallError(t *testing.T) {
+// TestSystemAccessPointGetDeviceListCallError tests the GetDeviceList method of SystemAccessPoint
+func TestSystemAccessPointGetDeviceListCallError(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
@@ -73,26 +73,26 @@ func TestSystemAccessPoint_GetDeviceListCallError(t *testing.T) {
 	// Check if the log output contains the expected error message
 	logOutput := buf.String()
 	if strings.Contains(logOutput, "msg=failed to get device list") || strings.Contains(logOutput, "error=\"Get \"https://localhost/fhapi/v1/api/rest/devicelist\": Test Error") {
-		t.Errorf("Unexpected log output, got: %s", logOutput)
+		t.Errorf(unexpectedLogOutput, logOutput)
 	}
 	// Check if result is nil and error is not nil
 	if result != nil {
-		t.Error("Expected nil result")
+		t.Error(expectedNil)
 	}
 	if err == nil {
-		t.Error("Expected error, got nil")
+		t.Error(expectedErrorGotNil)
 	}
 
 	// Check if the error message is correct
 	expected := "Get \"https://localhost/fhapi/v1/api/rest/devicelist\": Test Error"
 	if err.Error() != expected {
-		t.Errorf("Expected error '%s', got '%v'", expected, err)
+		t.Errorf(expectedErrorGotValue, expected, err)
 
 	}
 }
 
-// TestSystemAccessPoint_GetDeviceListErrorResponse tests the GetDeviceList method of SystemAccessPoint
-func TestSystemAccessPoint_GetDeviceListErrorResponse(t *testing.T) {
+// TestSystemAccessPointGetDeviceListErrorResponse tests the GetDeviceList method of SystemAccessPoint
+func TestSystemAccessPointGetDeviceListErrorResponse(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
@@ -114,15 +114,15 @@ func TestSystemAccessPoint_GetDeviceListErrorResponse(t *testing.T) {
 		!strings.Contains(logOutput, "level=ERROR") ||
 		!strings.Contains(logOutput, "status=\"Internal Server Error\"") ||
 		!strings.Contains(logOutput, "body=\"Internal Server Error\"") {
-		t.Errorf("Unexpected log output, got: %s", logOutput)
+		t.Errorf(unexpectedLogOutput, logOutput)
 	}
 
 	// Check if result is nil and error is not nil
 	if err == nil {
-		t.Fatal("Expected error, got nil")
+		t.Fatal(expectedErrorGotNil)
 	}
 	if result != nil {
-		t.Error("Expected nil result")
+		t.Error(expectedNil)
 	}
 
 	// Check if the request method and URL are correct
@@ -137,12 +137,12 @@ func TestSystemAccessPoint_GetDeviceListErrorResponse(t *testing.T) {
 	// Check if the error message is correct
 	expected := "failed to get device list: Internal Server Error"
 	if err.Error() != expected {
-		t.Errorf("Expected error '%s', got '%v'", expected, err)
+		t.Errorf(expectedErrorGotValue, expected, err)
 	}
 }
 
-// TestSystemAccessPoint_GetDeviceListUnmarshalError tests the GetDeviceList method of SystemAccessPoint
-func TestSystemAccessPoint_GetDeviceListUnmarshalError(t *testing.T) {
+// TestSystemAccessPointGetDeviceListUnmarshalError tests the GetDeviceList method of SystemAccessPoint
+func TestSystemAccessPointGetDeviceListUnmarshalError(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
@@ -162,20 +162,20 @@ func TestSystemAccessPoint_GetDeviceListUnmarshalError(t *testing.T) {
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, "msg=\"failed to parse device list\"") ||
 		!strings.Contains(logOutput, "level=ERROR") {
-		t.Errorf("Unexpected log output, got: %s", logOutput)
+		t.Errorf(unexpectedLogOutput, logOutput)
 	}
 
 	// Check if result is nil and error is not nil
 	if err == nil {
-		t.Fatal("Expected error, got nil")
+		t.Fatal(expectedErrorGotNil)
 	}
 	if result != nil {
-		t.Error("Expected nil result")
+		t.Error(expectedNil)
 	}
 
 	// Check if the error message is correct
 	expected := "json: cannot unmarshal object into Go value of type string"
 	if err.Error() != expected {
-		t.Errorf("Expected error '%s', got '%v'", expected, err)
+		t.Errorf(expectedErrorGotValue, expected, err)
 	}
 }
