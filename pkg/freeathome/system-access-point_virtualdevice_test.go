@@ -72,7 +72,7 @@ func TestSystemAccessPointCreateVirtualDevice(t *testing.T) {
 		t.Errorf("Expected 1 created virtual device, got %d", len((*result)[models.EmptyUUID].Devices))
 	}
 	if (*result)[models.EmptyUUID].Devices["abcd12345"].Serial != "6000D2CB27B2" {
-		t.Errorf("Expected created virtual device serial to be '6000D2CB27B2', got '%s'", (*result)[models.EmptyUUID].Devices["a1b2c3"].Serial)
+		t.Errorf("Expected created virtual device serial to be '6000D2CB27B2', got '%s'", (*result)[models.EmptyUUID].Devices["abcd12345"].Serial)
 	}
 }
 
