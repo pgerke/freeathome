@@ -25,7 +25,9 @@ type Device struct {
 }
 
 // Devices represents a map of devices identified by their serial.
-type Devices map[string]Device
+type Devices struct {
+	Devices map[string]Device `json:"devices"`
+}
 
 // DeviceResponse represents a map of devices per system access point.
 type DeviceResponse map[string]Devices

@@ -8,7 +8,7 @@ type Message struct {
 	Datapoints map[string]string `json:"datapoints"`
 
 	// Devices is a map of device identifiers to their values.
-	Devices Devices `json:"devices"`
+	Devices map[string]Device `json:"devices"`
 
 	// DevicesAdded is a list of devices that have been added.
 	DevicesAdded []string `json:"devicesAdded"`

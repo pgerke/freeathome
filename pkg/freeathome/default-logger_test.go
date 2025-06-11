@@ -11,7 +11,7 @@ import (
 var testParams = []any{"key1", "value1", "key2", 123, "key3", true}
 
 // TestDefaultLogger tests the default logger functionality.
-func TestDefaultLogger_DefaultHandler(t *testing.T) {
+func TestDefaultLoggerDefaultHandler(t *testing.T) {
 	var buf bytes.Buffer
 	handler := slog.NewTextHandler(&buf, nil)
 	slog.SetDefault(slog.New(handler))
@@ -27,8 +27,8 @@ func TestDefaultLogger_DefaultHandler(t *testing.T) {
 	evaluateLogOutput(t, buf.String(), message, testParams)
 }
 
-// TestDefaultLogger_Debug tests the Debug method of the default logger.
-func TestDefaultLogger_Debug(t *testing.T) {
+// TestDefaultLoggerDebug tests the Debug method of the default logger.
+func TestDefaultLoggerDebug(t *testing.T) {
 	var buf bytes.Buffer
 	logger := createTestLogger(t, &buf)
 	message := "Debug message"
@@ -36,8 +36,8 @@ func TestDefaultLogger_Debug(t *testing.T) {
 	evaluateLogOutput(t, buf.String(), message, testParams)
 }
 
-// TestDefaultLogger_Error tests the Error method of the default logger.
-func TestDefaultLogger_Error(t *testing.T) {
+// TestDefaultLoggerError tests the Error method of the default logger.
+func TestDefaultLoggerError(t *testing.T) {
 	var buf bytes.Buffer
 	logger := createTestLogger(t, &buf)
 	message := "Error message"
@@ -45,8 +45,8 @@ func TestDefaultLogger_Error(t *testing.T) {
 	evaluateLogOutput(t, buf.String(), message, testParams)
 }
 
-// TestDefaultLogger_Log tests the Log method of the default logger.
-func TestDefaultLogger_Log(t *testing.T) {
+// TestDefaultLoggerLog tests the Log method of the default logger.
+func TestDefaultLoggerLog(t *testing.T) {
 	var buf bytes.Buffer
 	logger := createTestLogger(t, &buf)
 	message := "Log message"
@@ -54,8 +54,8 @@ func TestDefaultLogger_Log(t *testing.T) {
 	evaluateLogOutput(t, buf.String(), message, testParams)
 }
 
-// TestDefaultLogger_Warn tests the Warn method of the default logger.
-func TestDefaultLogger_Warn(t *testing.T) {
+// TestDefaultLoggerWarn tests the Warn method of the default logger.
+func TestDefaultLoggerWarn(t *testing.T) {
 	var buf bytes.Buffer
 	logger := createTestLogger(t, &buf)
 	message := "Warn message"

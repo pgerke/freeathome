@@ -12,7 +12,7 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.8.2
+    rev: v4.8.3
     hooks:
       - id: commitizen
 
@@ -30,6 +30,6 @@ repos:
       - id: go-test-mod
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.26.0
+    rev: v8.27.2
     hooks:
       - id: gitleaks

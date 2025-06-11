@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-// TestSystemAccessPoint_DefaultLogger tests the default logger functionality of SystemAccessPoint.
-func TestSystemAccessPoint_DefaultLogger(t *testing.T) {
+// TestSystemAccessPointDefaultLogger tests the default logger functionality of SystemAccessPoint.
+func TestSystemAccessPointDefaultLogger(t *testing.T) {
 	// Create a buffer to capture log output
 	var buf bytes.Buffer
 	handler := slog.NewTextHandler(&buf, nil)
@@ -24,8 +24,8 @@ func TestSystemAccessPoint_DefaultLogger(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPoint_GetHostName tests the GetHostName method of SystemAccessPoint.
-func TestSystemAccessPoint_GetHostName(t *testing.T) {
+// TestSystemAccessPointGetHostName tests the GetHostName method of SystemAccessPoint.
+func TestSystemAccessPointGetHostName(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	expected := "localhost"
 
@@ -43,8 +43,8 @@ func TestSystemAccessPoint_GetHostName(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPoint_GetTlsEnabled tests the GetTlsEnabled method of SystemAccessPoint.
-func TestSystemAccessPoint_GetTlsEnabled(t *testing.T) {
+// TestSystemAccessPointGetTlsEnabled tests the GetTlsEnabled method of SystemAccessPoint.
+func TestSystemAccessPointGetTlsEnabled(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	expected := true
 
@@ -62,8 +62,8 @@ func TestSystemAccessPoint_GetTlsEnabled(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPoint_GetVerboseErrors tests the GetVerboseErrors method of SystemAccessPoint.
-func TestSystemAccessPoint_GetVerboseErrors(t *testing.T) {
+// TestSystemAccessPointGetVerboseErrors tests the GetVerboseErrors method of SystemAccessPoint.
+func TestSystemAccessPointGetVerboseErrors(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 	expected := false
 
@@ -81,8 +81,8 @@ func TestSystemAccessPoint_GetVerboseErrors(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPoint_GetUrlWithoutTls tests the GetUrl method of SystemAccessPoint without TLS.
-func TestSystemAccessPoint_GetUrlWithoutTls(t *testing.T) {
+// TestSystemAccessPointGetUrlWithoutTls tests the GetUrl method of SystemAccessPoint without TLS.
+func TestSystemAccessPointGetUrlWithoutTls(t *testing.T) {
 	sysAp, buf, _ := setup(t, false)
 	expected := "http://localhost/fhapi/v1/api/rest/test123"
 	actual := sysAp.GetUrl("test123")
@@ -99,8 +99,8 @@ func TestSystemAccessPoint_GetUrlWithoutTls(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPoint_GetUrlWithTls tests the GetUrl method of SystemAccessPoint with TLS.
-func TestSystemAccessPoint_GetUrlWithTls(t *testing.T) {
+// TestSystemAccessPointGetUrlWithTls tests the GetUrl method of SystemAccessPoint with TLS.
+func TestSystemAccessPointGetUrlWithTls(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 
 	actual := sysAp.GetUrl("test123")
@@ -118,8 +118,8 @@ func TestSystemAccessPoint_GetUrlWithTls(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPoint_GetWebSocketUrlWithoutTls tests the getWebSocketUrl method of SystemAccessPoint without TLS.
-func TestSystemAccessPoint_GetWsUrlWithoutTls(t *testing.T) {
+// TestSystemAccessPointGetWebSocketUrlWithoutTls tests the getWebSocketUrl method of SystemAccessPoint without TLS.
+func TestSystemAccessPointGetWsUrlWithoutTls(t *testing.T) {
 	sysAp, buf, _ := setup(t, false)
 
 	actual := sysAp.getWebSocketUrl()
@@ -137,8 +137,8 @@ func TestSystemAccessPoint_GetWsUrlWithoutTls(t *testing.T) {
 	}
 }
 
-// TestSystemAccessPoint_GetWebSocketUrlWithTls tests the getWebSocketUrl method of SystemAccessPoint with TLS.
-func TestSystemAccessPoint_GetWsUrlWithTls(t *testing.T) {
+// TestSystemAccessPointGetWebSocketUrlWithTls tests the getWebSocketUrl method of SystemAccessPoint with TLS.
+func TestSystemAccessPointGetWsUrlWithTls(t *testing.T) {
 	sysAp, buf, _ := setup(t, true)
 
 	actual := sysAp.getWebSocketUrl()

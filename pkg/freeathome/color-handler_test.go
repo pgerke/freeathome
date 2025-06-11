@@ -75,7 +75,7 @@ func TestNewColorHandler(t *testing.T) {
 	}
 }
 
-func TestColorHandler_Enabled(t *testing.T) {
+func TestColorHandlerEnabled(t *testing.T) {
 	tests := []struct {
 		name     string
 		level    slog.Level
@@ -105,7 +105,7 @@ func TestColorHandler_Enabled(t *testing.T) {
 	}
 }
 
-func TestColorHandler_Handle(t *testing.T) {
+func TestColorHandlerHandle(t *testing.T) {
 	tests := []struct {
 		name       string
 		record     slog.Record
@@ -203,7 +203,7 @@ func TestColorHandler_Handle(t *testing.T) {
 	}
 }
 
-func TestColorHandler_WithAttrs(t *testing.T) {
+func TestColorHandlerWithAttrs(t *testing.T) {
 	tests := []struct {
 		name  string
 		attrs []slog.Attr
@@ -261,7 +261,7 @@ func TestColorHandler_WithAttrs(t *testing.T) {
 	}
 }
 
-func TestColorHandler_WithGroup(t *testing.T) {
+func TestColorHandlerWithGroup(t *testing.T) {
 	tests := []struct {
 		name      string
 		groupName string
