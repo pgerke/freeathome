@@ -24,6 +24,7 @@ type connection interface {
 
 // SystemAccessPoint represents a system access point that can be used to communicate with a free@home system.
 type SystemAccessPoint struct {
+	UUID string
 	// hostName is the host name of the system access point.
 	hostName string
 	// logger is the logger that is used to log messages.
@@ -56,6 +57,7 @@ func NewSystemAccessPoint(hostName string, userName string, password string, tls
 	}
 
 	return &SystemAccessPoint{
+		UUID:                    models.EmptyUUID,
 		hostName:                hostName,
 		logger:                  logger,
 		tlsEnabled:              tlsEnabled,
@@ -142,6 +144,27 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveI
 			sysAp.webSocketConnectionLoop(ctx, keepaliveInterval)
 		}
 	}
+}
+
+// CreateVirtualDevice creates a new virtual device on the System Access Point (SysAP) with the specified serial number.
+// It sends a PUT request containing the provided VirtualDevice data to the SysAP API.
+// On success, it returns the response containing details of the created virtual device.
+// If an error occurs during the request or response parsing, it logs the error, emits an error event, and returns the error.
+//
+// Parameters:
+//   - serial: The serial number of the virtual device to be created.
+//   - virtualDevice: A pointer to the VirtualDevice struct containing the device configuration.
+//
+// Returns:
+//   - *models.VirtualDeviceResponse: Pointer to the response struct with details of the created virtual device.
+//   - error: An error object if the operation fails, otherwise nil.
+func (sysAp *SystemAccessPoint) CreateVirtualDevice(serial string, virtualDevice *models.VirtualDevice) (*models.VirtualDeviceResponse, error) {
+	resp, err := sysAp.client.R().
+		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial}).
+		SetBody(virtualDevice).
+		Put(sysAp.GetUrl("virtualdevice/{uuid}/{serial}"))
+
+	return DeserializeRestResponse[models.VirtualDeviceResponse](sysAp, resp, err, "failed to create virtual device")
 }
 
 // webSocketConnectionLoop establishes a web socket connection and starts the message loop.
@@ -348,26 +371,7 @@ func (sysAp *SystemAccessPoint) processMessage(message []byte) {
 func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error) {
 	resp, err := sysAp.client.R().Get(sysAp.GetUrl("configuration"))
 
-	// Check for errors
-	if err != nil {
-		sysAp.logger.Error("failed to get configuration", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	if resp.IsError() {
-		sysAp.logger.Error("failed to get configuration", "status", resp.Status(), "body", resp.String())
-		return nil, fmt.Errorf("failed to get configuration: %s", resp.String())
-	}
-
-	var configuration models.Configuration
-	if err := json.Unmarshal(resp.Body(), &configuration); err != nil {
-		sysAp.logger.Error("failed to parse configuration", "error", err)
-		sysAp.emitError(err)
-		return nil, err
-	}
-
-	return &configuration, nil
+	return DeserializeRestResponse[models.Configuration](sysAp, resp, err, "failed to get configuration")
 }
 
 // GetDeviceList retrieves the list of devices from the system access point.
@@ -380,23 +384,123 @@ func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error
 func (sysAp *SystemAccessPoint) GetDeviceList() (*models.DeviceList, error) {
 	resp, err := sysAp.client.R().Get(sysAp.GetUrl("devicelist"))
 
+	return DeserializeRestResponse[models.DeviceList](sysAp, resp, err, "failed to get device list")
+}
+
+// GetDevice retrieves a device with the specified serial number from the system access point.
+// It sends a GET request to the appropriate endpoint and parses the response into a DeviceResponse model.
+// Returns a pointer to the DeviceResponse and an error if the request fails or the response cannot be parsed.
+func (sysAp *SystemAccessPoint) GetDevice(serial string) (*models.DeviceResponse, error) {
+	resp, err := sysAp.client.R().
+		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial}).
+		Get(sysAp.GetUrl("device/{uuid}/{serial}"))
+
+	return DeserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to get device")
+}
+
+// GetDatapoint retrieves a datapoint from the System Access Point using the provided serial number, channel, and datapoint identifiers.
+// It sends a GET request to the corresponding endpoint and parses the response into a models.Datapoint object.
+// If the request fails or the response cannot be parsed, an error is returned and logged.
+//
+// Parameters:
+//
+//	serial   - The serial number of the device.
+//	channel  - The channel identifier.
+//	datapoint - The datapoint identifier.
+//
+// Returns:
+//
+//	*models.Datapoint - The retrieved datapoint object.
+//	error             - An error if the request or parsing fails.
+func (sysAp *SystemAccessPoint) GetDatapoint(serial string, channel string, datapoint string) (*models.GetDataPointResponse, error) {
+	resp, err := sysAp.client.R().
+		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial, "channel": channel, "datapoint": datapoint}).
+		Get(sysAp.GetUrl("datapoint/{uuid}/{serial}.{channel}.{datapoint}"))
+
+	return DeserializeRestResponse[models.GetDataPointResponse](sysAp, resp, err, "failed to get datapoint")
+}
+
+// SetDatapoint sets the value of a specified datapoint for a given device channel.
+// It sends a PUT request to the System Access Point (SysAP) to update the datapoint value.
+//
+// Parameters:
+//
+//	serial    - The serial number of the target device.
+//	channel   - The channel identifier of the device.
+//	datapoint - The datapoint identifier to be set.
+//	value     - The value to set for the datapoint.
+//
+// Returns:
+//
+//	*models.SetDataPointResponse - The response from the SysAP after setting the datapoint.
+//	error                        - An error if the request fails or the response cannot be parsed.
+func (sysAp *SystemAccessPoint) SetDatapoint(serial string, channel string, datapoint string, value string) (*models.SetDataPointResponse, error) {
+	resp, err := sysAp.client.R().
+		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial, "channel": channel, "datapoint": datapoint}).
+		SetBody(value).
+		Put(sysAp.GetUrl("datapoint/{uuid}/{serial}.{channel}.{datapoint}"))
+
+	return DeserializeRestResponse[models.SetDataPointResponse](sysAp, resp, err, "failed to set datapoint")
+}
+
+// TriggerProxyDevice sends a request to trigger an action on a proxy device identified by its class and serial number.
+// It constructs the request URL using the SystemAccessPoint's UUID, the device class, serial, and the specified action.
+// The method returns the parsed DeviceResponse on success, or an error if the request fails or the response cannot be parsed.
+//
+// Parameters:
+//   - class:  The class of the proxy device.
+//   - serial: The serial number of the proxy device.
+//   - action: The action to trigger on the proxy device.
+//
+// Returns:
+//   - *models.DeviceResponse: The response from the device if the action is successful.
+//   - error: An error if the request fails or the response cannot be parsed.
+func (sysAp *SystemAccessPoint) TriggerProxyDevice(class string, serial string, action string) (*models.DeviceResponse, error) {
+	resp, err := sysAp.client.R().
+		SetPathParams(map[string]string{"uuid": sysAp.UUID, "class": class, "serial": serial, "action": action}).
+		Get(sysAp.GetUrl("proxydevice/{uuid}/{class}/{serial}/action/{action}"))
+
+	return DeserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to trigger proxy device")
+}
+
+// SetProxyDeviceValue sets the value of a proxy device identified by its class and serial number.
+// It sends a PUT request to the system access point's API and returns the device response.
+//
+// Parameters:
+//   - class:  The device class identifier.
+//   - serial: The serial number of the device.
+//   - value:  The value to set for the device.
+//
+// Returns:
+//   - *models.DeviceResponse: The response from the device if the operation is successful.
+//   - error: An error if the request fails or the response cannot be parsed.
+func (sysAp *SystemAccessPoint) SetProxyDeviceValue(class string, serial string, value string) (*models.DeviceResponse, error) {
+	resp, err := sysAp.client.R().
+		SetPathParams(map[string]string{"uuid": sysAp.UUID, "class": class, "serial": serial, "value": value}).
+		Put(sysAp.GetUrl("proxydevice/{uuid}/{class}/{serial}/value/{value}"))
+
+	return DeserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to set proxy device value")
+}
+
+func DeserializeRestResponse[T any](sysAp *SystemAccessPoint, resp *resty.Response, err error, errorMessage string) (*T, error) {
 	// Check for errors
 	if err != nil {
-		sysAp.logger.Error("failed to get device list", "error", err)
+		sysAp.logger.Error(errorMessage, "error", err)
 		sysAp.emitError(err)
 		return nil, err
 	}
 
 	if resp.IsError() {
-		sysAp.logger.Error("failed to get device list", "status", resp.Status(), "body", resp.String())
-		return nil, fmt.Errorf("failed to get device list: %s", resp.String())
+		sysAp.logger.Error(errorMessage, "status", resp.Status(), "body", resp.String())
+		return nil, fmt.Errorf("%s: %s", errorMessage, resp.String())
 	}
 
-	var deviceList models.DeviceList
-	if err := json.Unmarshal(resp.Body(), &deviceList); err != nil {
-		sysAp.logger.Error("failed to parse device list", "error", err)
+	var object T
+	if err := json.Unmarshal(resp.Body(), &object); err != nil {
+		sysAp.logger.Error("failed to parse response body", "error", err)
+		sysAp.emitError(err)
 		return nil, err
 	}
 
-	return &deviceList, nil
+	return &object, nil
 }

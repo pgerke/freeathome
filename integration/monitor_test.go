@@ -16,10 +16,10 @@ import (
 const bin = "./../monitor-integration.test"
 const coverageDirectory = "./../coverage-monitor"
 
-// TestMonitor_MissingEnvs verifies the monitor's behavior when required environment variables are missing.
-func TestMonitor_MissingEnvs(t *testing.T) {
+// TestMonitorMissingEnvs verifies the monitor's behavior when required environment variables are missing.
+func TestMonitorMissingEnvs(t *testing.T) {
 	// Run with missing env
-	run := exec.Command(bin, "-test.run=TestMonitor_Main")
+	run := exec.Command(bin, "-test.run=TestMonitorMain")
 	run.Env = append(os.Environ(), "RUN_MAIN=1", "GOCOVERDIR="+coverageDirectory)
 
 	output, err := run.CombinedOutput()
@@ -39,13 +39,13 @@ func TestMonitor_MissingEnvs(t *testing.T) {
 	}
 }
 
-func TestMonitor_SuccessfulRun(t *testing.T) {
+func TestMonitorSuccessfulRun(t *testing.T) {
 	// Set up the test server
 	addr, shutdown := startTestWebSocketServer(t)
 	defer shutdown()
 
 	// Run the monitor
-	run := exec.Command(bin, "-test.run=TestMonitor_Main")
+	run := exec.Command(bin, "-test.run=TestMonitorMain")
 	run.Env = append(os.Environ(),
 		"RUN_MAIN=1",
 		"GOCOVERDIR="+coverageDirectory,
