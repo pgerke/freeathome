@@ -2,13 +2,43 @@
 
 A client library for the BUSCH-JAEGER free@home local API implemented in Golang.
 
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/pgerke/freeathome)
+![CI](https://img.shields.io/github/actions/workflow/status/pgerke/freeathome/ci.yaml?style=flat-square)
+[![codecov](https://codecov.io/gh/pgerke/freeathome/branch/main/graph/badge.svg?token=UJQVXZ5PPM)](https://codecov.io/gh/pgerke/freeathome)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=pgerke_freeathome&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=pgerke_freeathome)
+![License](https://img.shields.io/github/license/pgerke/freeathome?style=flat-square)
+
 ## Installation
 
-TBD
+To use this library in your own Go project, make sure your project is using Go modules. Then, run the following command to add the dependency:
+
+```sh
+go get github.com/pgerke/freeathome@latest
+```
+
+You can then import the package in your code:
+
+```go
+import "github.com/pgerke/freeathome"
+```
+
+This will give you access to the public API client and related utilities for interacting with a local free\@home SysAP.
 
 ## Features
 
-TBD
+The project initially covers the scope of the [TypeScript free@home API Client](https://github.com/pgerke/freeathome-local-api-client).
+
+- Connect to your B+J System Access Point 2.0 and control it using the local API.
+- 100% covered by automated unit tests
+- Websocket communication with keepalive
+- Get configuration
+- Get device list
+- Get device
+- Create virtual device
+- Get and set datapoints
+- Trigger proxy device
+- Set proxy device value
+- Default and custom loggers!
 
 ## Usage Requirements
 
@@ -17,7 +47,7 @@ TBD
 
 ## Documentation
 
-TBD
+The API documentation is available at https://pkg.go.dev/github.com/pgerke/freeathome.
 
 ## I found a bug, what do I do?
 
