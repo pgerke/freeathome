@@ -1,25 +1,24 @@
-## 1.0.0 (2025-06-01)
+# Changelog
 
-### Feat
+All notable changes to this project will be documented in this file.
 
-- **sysap**: clean up websocket connection lifecycle
-- **sysap**: add keepalive timer for websocket connection
-- **monitor**: start implementing monitor
-- **websocket**: process web socket messages
-- **websocket**: implement clean websocket lifecycle
-- **sysap**: support system access point web socket
-- **sysap**: create web socket connection
-- **model**: continue migrating the data models
-- **model**: continue migrating the data models
-- **model**: continue migrating the data models
-- **models**: start creating api models
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### Refactor
+## [v1.0.0](https://github.com/pgerke/freeathome/releases/tag/1.0.0) - 12.06.2025
 
-- apply suggestions from code review
+### Added
 
-## 0.1.0 (2025-03-16)
-
-### Feat
-
-- start application bring up
+- [#7](https://github.com/pgerke/freeathome/issues/7) Implemented initial API scope:
+  - The scope of the [TypeScript free@home API Client](https://github.com/pgerke/freeathome-local-api-client) is covered
+  - System Access Point configuration
+  - Logger support
+  - Websocket communication with keepalive
+  - Get configuration
+  - Get device list
+  - Get device
+  - Create virtual device
+  - Get and set datapoints
+  - Trigger proxy device
+  - Set proxy device value
+- [#16](https://github.com/pgerke/freeathome/issues/16) Implemented monitor application covering the scope of the [JavaScript free@home Monitor](https://github.com/pgerke/freeathome-monitor)

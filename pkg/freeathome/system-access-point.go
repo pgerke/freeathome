@@ -164,7 +164,7 @@ func (sysAp *SystemAccessPoint) CreateVirtualDevice(serial string, virtualDevice
 		SetBody(virtualDevice).
 		Put(sysAp.GetUrl("virtualdevice/{uuid}/{serial}"))
 
-	return DeserializeRestResponse[models.VirtualDeviceResponse](sysAp, resp, err, "failed to create virtual device")
+	return deserializeRestResponse[models.VirtualDeviceResponse](sysAp, resp, err, "failed to create virtual device")
 }
 
 // webSocketConnectionLoop establishes a web socket connection and starts the message loop.
@@ -371,7 +371,7 @@ func (sysAp *SystemAccessPoint) processMessage(message []byte) {
 func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error) {
 	resp, err := sysAp.client.R().Get(sysAp.GetUrl("configuration"))
 
-	return DeserializeRestResponse[models.Configuration](sysAp, resp, err, "failed to get configuration")
+	return deserializeRestResponse[models.Configuration](sysAp, resp, err, "failed to get configuration")
 }
 
 // GetDeviceList retrieves the list of devices from the system access point.
@@ -384,7 +384,7 @@ func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error
 func (sysAp *SystemAccessPoint) GetDeviceList() (*models.DeviceList, error) {
 	resp, err := sysAp.client.R().Get(sysAp.GetUrl("devicelist"))
 
-	return DeserializeRestResponse[models.DeviceList](sysAp, resp, err, "failed to get device list")
+	return deserializeRestResponse[models.DeviceList](sysAp, resp, err, "failed to get device list")
 }
 
 // GetDevice retrieves a device with the specified serial number from the system access point.
@@ -395,7 +395,7 @@ func (sysAp *SystemAccessPoint) GetDevice(serial string) (*models.DeviceResponse
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial}).
 		Get(sysAp.GetUrl("device/{uuid}/{serial}"))
 
-	return DeserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to get device")
+	return deserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to get device")
 }
 
 // GetDatapoint retrieves a datapoint from the System Access Point using the provided serial number, channel, and datapoint identifiers.
@@ -417,7 +417,7 @@ func (sysAp *SystemAccessPoint) GetDatapoint(serial string, channel string, data
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial, "channel": channel, "datapoint": datapoint}).
 		Get(sysAp.GetUrl("datapoint/{uuid}/{serial}.{channel}.{datapoint}"))
 
-	return DeserializeRestResponse[models.GetDataPointResponse](sysAp, resp, err, "failed to get datapoint")
+	return deserializeRestResponse[models.GetDataPointResponse](sysAp, resp, err, "failed to get datapoint")
 }
 
 // SetDatapoint sets the value of a specified datapoint for a given device channel.
@@ -440,7 +440,7 @@ func (sysAp *SystemAccessPoint) SetDatapoint(serial string, channel string, data
 		SetBody(value).
 		Put(sysAp.GetUrl("datapoint/{uuid}/{serial}.{channel}.{datapoint}"))
 
-	return DeserializeRestResponse[models.SetDataPointResponse](sysAp, resp, err, "failed to set datapoint")
+	return deserializeRestResponse[models.SetDataPointResponse](sysAp, resp, err, "failed to set datapoint")
 }
 
 // TriggerProxyDevice sends a request to trigger an action on a proxy device identified by its class and serial number.
@@ -460,7 +460,7 @@ func (sysAp *SystemAccessPoint) TriggerProxyDevice(class string, serial string, 
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "class": class, "serial": serial, "action": action}).
 		Get(sysAp.GetUrl("proxydevice/{uuid}/{class}/{serial}/action/{action}"))
 
-	return DeserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to trigger proxy device")
+	return deserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to trigger proxy device")
 }
 
 // SetProxyDeviceValue sets the value of a proxy device identified by its class and serial number.
@@ -479,10 +479,10 @@ func (sysAp *SystemAccessPoint) SetProxyDeviceValue(class string, serial string,
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "class": class, "serial": serial, "value": value}).
 		Put(sysAp.GetUrl("proxydevice/{uuid}/{class}/{serial}/value/{value}"))
 
-	return DeserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to set proxy device value")
+	return deserializeRestResponse[models.DeviceResponse](sysAp, resp, err, "failed to set proxy device value")
 }
 
-func DeserializeRestResponse[T any](sysAp *SystemAccessPoint, resp *resty.Response, err error, errorMessage string) (*T, error) {
+func deserializeRestResponse[T any](sysAp *SystemAccessPoint, resp *resty.Response, err error, errorMessage string) (*T, error) {
 	// Check for errors
 	if err != nil {
 		sysAp.logger.Error(errorMessage, "error", err)
