@@ -12,7 +12,7 @@ jobs:
     name: Check if PR will trigger a Release
     runs-on: ubuntu-latest
     outputs:
-      version_changed: ${{ steps.detect_version_change.outputs.version_changed }} == "true"
+      version_changed: ${{ steps.detect_version_change.outputs.version_changed }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
