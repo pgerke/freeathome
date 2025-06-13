@@ -36,7 +36,7 @@ SYSAP_PASSWORD=s3cr3t_p4ssW0rD
 
 1. In the repository base directory install the dependencies by running `go mod tidy`.
 1. Then you can build the monitor application by running `go build -o monitor ./cmd/monitor`
-1. With the environment variables set, start the monitor applicatiton with `./monitor`.
+1. With the environment variables set, start the monitor application with `./monitor`.
 1. To stop the monitor send an interrupt signal by pressing <kbd>Ctrl</kbd>+<kbd>C</kbd>. This triggers the graceful shutdown and may take a moment to complete.
 1. To force a shutdown you can send a second SIGINT by pressing <kbd>Ctrl</kbd>+<kbd>C</kbd> again.
 
