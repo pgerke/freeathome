@@ -64,6 +64,7 @@ func NewSystemAccessPoint(hostName string, userName string, password string, tls
 
 	// Configure TLS settings if TLS is enabled
 	if tlsEnabled && skipTLSVerify {
+		logger.Warn("TLS is enabled but certificate verification is disabled, this is not recommended!")
 		client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	}
 
@@ -193,6 +194,7 @@ func (sysAp *SystemAccessPoint) webSocketConnectionLoop(ctx context.Context, kee
 	// Create a custom dialer for WebSocket connection
 	dialer := websocket.DefaultDialer
 	if sysAp.tlsEnabled && sysAp.skipTLSVerify {
+		sysAp.logger.Warn("TLS is enabled but certificate verification is disabled, this is not recommended!")
 		dialer = &websocket.Dialer{
 			Proxy:            http.ProxyFromEnvironment,
 			HandshakeTimeout: 45 * time.Second,

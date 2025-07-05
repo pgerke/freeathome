@@ -90,8 +90,8 @@ func TestSystemAccessPointGetSkipTLSVerifyEnabled(t *testing.T) {
 
 	// Check if the log output is empty
 	logOutput := buf.String()
-	if logOutput != "" {
-		t.Errorf("Expected no log output, got: %s", logOutput)
+	if !strings.Contains(logOutput, "this is not recommended") {
+		t.Errorf("Expected log output to contain 'this is not recommended', got: %s", logOutput)
 	}
 
 	// Check if the actual skip TLS verify status matches the expected status
