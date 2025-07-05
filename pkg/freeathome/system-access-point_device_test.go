@@ -11,7 +11,7 @@ import (
 )
 
 func TestSystemAccessPointGetDevice(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       loadTestResponseBody(t, "device.json"),
@@ -62,7 +62,7 @@ func TestSystemAccessPointGetDevice(t *testing.T) {
 }
 
 func TestSystemAccessPointGetDeviceCallError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
 		Response: nil,
@@ -95,7 +95,7 @@ func TestSystemAccessPointGetDeviceCallError(t *testing.T) {
 }
 
 func TestSystemAccessPointGetDeviceErrorResponse(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Status:     "Internal Server Error",
@@ -145,7 +145,7 @@ func TestSystemAccessPointGetDeviceErrorResponse(t *testing.T) {
 }
 
 func TestSystemAccessPointGetDeviceUnmarshalError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(strings.NewReader(`{"00000000-0000-0000-0000-000000000000":{"devices":{"abcd12345":{"nativeId": 123}}}}`)),

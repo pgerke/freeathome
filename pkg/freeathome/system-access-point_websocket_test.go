@@ -21,7 +21,7 @@ const testMessageValid = "valid message"
 
 // TestSystemAccessPointWebSocketMessageHandler tests the webSocketMessageHandler method of SystemAccessPoint.
 func TestSystemAccessPointWebSocketMessageHandler(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	defer sysAp.waitGroup.Wait()
 	sysAp.webSocketMessageChannel = make(chan []byte, 10)
 
@@ -98,7 +98,7 @@ func TestSystemAccessPointWebSocketMessageHandler(t *testing.T) {
 }
 
 func TestSystemAccessPointWebSocketMessageHandlerMissingChannel(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	defer sysAp.waitGroup.Wait()
 	sysAp.webSocketMessageChannel = nil
 
@@ -118,7 +118,7 @@ func TestSystemAccessPointConnectWebSocketSuccess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, _, records := setup(t, false)
+	sysAp, _, records := setup(t, false, false)
 
 	// Mock the WebSocket connection
 	dialer := &websocket.Dialer{}
@@ -161,7 +161,7 @@ func TestSystemAccessPointConnectWebSocketSuccess(t *testing.T) {
 func TestSystemAccessPointConnectWebSocketContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	sysAp, _, records := setup(t, false)
+	sysAp, _, records := setup(t, false, false)
 
 	// Mock the WebSocket connection
 	dialer := &websocket.Dialer{}
@@ -226,7 +226,7 @@ func TestSystemAccessPointConnectWebSocketFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, buf, _ := setup(t, false)
+	sysAp, buf, _ := setup(t, false, false)
 	defer sysAp.waitGroup.Wait()
 
 	// Set an invalid host name to simulate connection failure
@@ -261,7 +261,7 @@ func TestSystemAccessPointWebSocketMessageLoopTextMessage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	sysAp.webSocketMessageChannel = make(chan []byte, 10)
 	sysAp.messageReceivedChannel = make(chan struct{}, 1)
 
@@ -307,7 +307,7 @@ func TestSystemAccessPointWebSocketMessageLoopNonTextMessage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	sysAp.webSocketMessageChannel = make(chan []byte, 10)
 	sysAp.messageReceivedChannel = make(chan struct{}, 1)
 	sysAp.onError = func(err error) {
@@ -355,7 +355,7 @@ func TestSystemAccessPointWebSocketMessageLoopMissingChannel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	sysAp.webSocketMessageChannel = nil
 	sysAp.messageReceivedChannel = make(chan struct{}, 1)
 
@@ -390,7 +390,7 @@ func TestSystemAccessPointWebSocketMessageLoopMissingChannel(t *testing.T) {
 }
 
 func TestSystemAccessPointwebSocketKeepaliveLoopMissingChannel(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	sysAp.messageReceivedChannel = nil
 
 	// Mock a WebSocket connection
@@ -412,7 +412,7 @@ func TestSystemAccessPointwebSocketKeepaliveLoopMissingChannel(t *testing.T) {
 }
 
 func TestSystemAccessPointwebSocketKeepaliveLoopSendPing(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	sysAp.messageReceivedChannel = make(chan struct{}, 1)
 
 	// Mock a WebSocket connection

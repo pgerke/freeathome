@@ -10,6 +10,17 @@ unittest:
 	@go test -timeout 5s -covermode atomic -coverprofile unittest.coverage.out -v ./...
 	@go tool cover -html=unittest.coverage.out -o unittest.coverage.html
 
+# Run the free@home CLI locally
+cli-run-local:
+	@echo "Starting free@home CLI v$(VERSION)-$(COMMIT)"
+	@go run -ldflags "-X 'main.version=$(VERSION)' -X 'main.commit=$(COMMIT)'" ./cmd/cli/main.go
+
+# Build the free@home CLI
+cli-build:
+	@echo "Building free@home CLI v$(VERSION)-$(COMMIT)"
+	@go build -ldflags "-X 'main.version=$(VERSION)' -X 'main.commit=$(COMMIT)'" -o fh ./cmd/cli/main.go
+	@chmod +x fh
+
 # Run the free@home monitor locally
 monitor-run-local:
 	@echo "Starting free@home monitor v$(VERSION)-$(COMMIT)"
