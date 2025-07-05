@@ -10,6 +10,8 @@ var (
 	// TLS configuration flags
 	tlsEnabled    bool
 	skipTLSVerify bool
+	// Logging configuration
+	logLevel string
 
 	getCmd = &cobra.Command{
 		Use:   "get",
@@ -35,8 +37,11 @@ func init() {
 	// Add TLS configuration flags
 	getCmd.PersistentFlags().BoolVar(&tlsEnabled, "tls", true, "Enable TLS for connection")
 	getCmd.PersistentFlags().BoolVar(&skipTLSVerify, "skip-tls-verify", false, "Skip TLS certificate verification")
+
+	// Add logging configuration flag
+	getCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set the log level (debug, info, warn, error)")
 }
 
 func runGetDeviceList(cmd *cobra.Command, args []string) error {
-	return cli.GetDeviceList(tlsEnabled, skipTLSVerify)
+	return cli.GetDeviceList(tlsEnabled, skipTLSVerify, logLevel)
 }
