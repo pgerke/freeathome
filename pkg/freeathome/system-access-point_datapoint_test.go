@@ -11,7 +11,7 @@ import (
 )
 
 func TestSystemAccessPointGetDatapoint(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       loadTestResponseBody(t, "get_datapoint.json"),
@@ -62,7 +62,7 @@ func TestSystemAccessPointGetDatapoint(t *testing.T) {
 }
 
 func TestSystemAccessPointGetDatapointCallError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
 		Response: nil,
@@ -95,7 +95,7 @@ func TestSystemAccessPointGetDatapointCallError(t *testing.T) {
 }
 
 func TestSystemAccessPointGetDatapointErrorResponse(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Status:     "Internal Server Error",
@@ -145,7 +145,7 @@ func TestSystemAccessPointGetDatapointErrorResponse(t *testing.T) {
 }
 
 func TestSystemAccessPointGetDatapointUnmarshalError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(strings.NewReader(`{"00000000-0000-0000-0000-000000000000":{"values":[123]}}`)),
@@ -182,7 +182,7 @@ func TestSystemAccessPointGetDatapointUnmarshalError(t *testing.T) {
 }
 
 func TestSystemAccessPointSetDatapoint(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       loadTestResponseBody(t, "set_datapoint.json"),
@@ -234,7 +234,7 @@ func TestSystemAccessPointSetDatapoint(t *testing.T) {
 }
 
 func TestSystemAccessPointSetDatapointCallError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
 		Response: nil,
@@ -267,7 +267,7 @@ func TestSystemAccessPointSetDatapointCallError(t *testing.T) {
 }
 
 func TestSystemAccessPointSetDatapointErrorResponse(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Status:     "Internal Server Error",
@@ -317,7 +317,7 @@ func TestSystemAccessPointSetDatapointErrorResponse(t *testing.T) {
 }
 
 func TestSystemAccessPointSetDatapointUnmarshalError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(strings.NewReader(`{"00000000-0000-0000-0000-000000000000":{"result": 1}}`)),

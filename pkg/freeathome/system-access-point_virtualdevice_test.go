@@ -25,7 +25,7 @@ func newVirtualDevice(t *testing.T) *models.VirtualDevice {
 }
 
 func TestSystemAccessPointCreateVirtualDevice(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       loadTestResponseBody(t, "virtualdevice.json"),
@@ -77,7 +77,7 @@ func TestSystemAccessPointCreateVirtualDevice(t *testing.T) {
 }
 
 func TestSystemAccessPointCreateVirtualDeviceCallError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
 		Response: nil,
@@ -111,7 +111,7 @@ func TestSystemAccessPointCreateVirtualDeviceCallError(t *testing.T) {
 }
 
 func TestSystemAccessPointCreateVirtualDeviceErrorResponse(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Status:     "Internal Server Error",
@@ -162,7 +162,7 @@ func TestSystemAccessPointCreateVirtualDeviceErrorResponse(t *testing.T) {
 }
 
 func TestSystemAccessPointCreateVirtualDeviceUnmarshalError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(strings.NewReader(`{"00000000-0000-0000-0000-000000000000":{"devices":{"abcd12345":{"serial": 123}}}}`)),

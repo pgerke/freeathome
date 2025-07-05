@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	internal "github.com/pgerke/freeathome/internal"
 	"github.com/spf13/cobra"
 )
 
@@ -10,7 +11,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("free@home-cli v%s-%s\n", version, commit)
+		fmt.Printf("free@home CLI v%s-%s\n", internal.Version, internal.Commit)
 	},
 	// Aliases:                []string{},
 	// SuggestFor:             []string{},

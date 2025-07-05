@@ -1,6 +1,12 @@
 package main
 
-import "github.com/pgerke/freeathome/cmd/cli/cmd"
+import (
+	"fmt"
+	"os"
+
+	"github.com/pgerke/freeathome/cmd/cli/cmd"
+	internal "github.com/pgerke/freeathome/internal"
+)
 
 // version is the version of the application. The value will be overridden by the linker during the build process.
 var version = "debug"
@@ -9,5 +15,11 @@ var version = "debug"
 var commit = "unknown"
 
 func main() {
-	cmd.Execute(version, commit)
+	internal.Version = version
+	internal.Commit = commit
+
+	if err := cmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }

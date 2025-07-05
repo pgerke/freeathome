@@ -2,6 +2,7 @@ package freeathome
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -31,6 +32,8 @@ type SystemAccessPoint struct {
 	logger models.Logger
 	// tlsEnabled indicates whether TLS is enabled for communication with the system access point.
 	tlsEnabled bool
+	// skipTLSVerify indicates whether TLS certificate verification should be skipped.
+	skipTLSVerify bool
 	// verboseErrors indicates whether verbose errors should be logged.
 	verboseErrors bool
 	// client is the REST client that is used to communicate with the system access point.
@@ -49,11 +52,19 @@ type SystemAccessPoint struct {
 	onError func(error)
 }
 
-// NewSystemAccessPoint creates a new SystemAccessPoint with the specified host name, user name, password, TLS enabled flag, verbose errors flag, and logger.
-func NewSystemAccessPoint(hostName string, userName string, password string, tlsEnabled bool, verboseErrors bool, logger models.Logger) *SystemAccessPoint {
+// NewSystemAccessPoint creates a new SystemAccessPoint with the specified host name, user name, password, TLS enabled flag, skip TLS verify flag, verbose errors flag, and logger.
+func NewSystemAccessPoint(hostName string, userName string, password string, tlsEnabled bool, skipTLSVerify bool, verboseErrors bool, logger models.Logger) *SystemAccessPoint {
 	if logger == nil {
 		logger = NewDefaultLogger(nil)
 		logger.Warn("No logger provided for SystemAccessPoint. Using default logger.")
+	}
+
+	// Create REST client with basic auth
+	client := resty.New().SetBasicAuth(userName, password)
+
+	// Configure TLS settings if TLS is enabled
+	if tlsEnabled && skipTLSVerify {
+		client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	}
 
 	return &SystemAccessPoint{
@@ -61,8 +72,9 @@ func NewSystemAccessPoint(hostName string, userName string, password string, tls
 		hostName:                hostName,
 		logger:                  logger,
 		tlsEnabled:              tlsEnabled,
+		skipTLSVerify:           skipTLSVerify,
 		verboseErrors:           verboseErrors,
-		client:                  resty.New().SetBasicAuth(userName, password),
+		client:                  client,
 		waitGroup:               sync.WaitGroup{},
 		webSocketMessageChannel: nil,
 		messageReceivedChannel:  nil,
@@ -85,6 +97,11 @@ func (sysAp *SystemAccessPoint) GetHostName() string {
 // TlsEnabled returns whether TLS is enabled for communication with the system access point.
 func (sysAp *SystemAccessPoint) GetTlsEnabled() bool {
 	return sysAp.tlsEnabled
+}
+
+// SkipTLSVerify returns whether TLS certificate verification should be skipped.
+func (sysAp *SystemAccessPoint) GetSkipTLSVerify() bool {
+	return sysAp.skipTLSVerify
 }
 
 // VerboseErrors returns whether verbose errors should be logged.
@@ -173,9 +190,19 @@ func (sysAp *SystemAccessPoint) webSocketConnectionLoop(ctx context.Context, kee
 	sysAp.waitGroup.Add(1)
 	defer sysAp.waitGroup.Done()
 
+	// Create a custom dialer for WebSocket connection
+	dialer := websocket.DefaultDialer
+	if sysAp.tlsEnabled && sysAp.skipTLSVerify {
+		dialer = &websocket.Dialer{
+			Proxy:            http.ProxyFromEnvironment,
+			HandshakeTimeout: 45 * time.Second,
+			TLSClientConfig:  &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
 	// Create a new web socket connection
 	basicAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", sysAp.client.UserInfo.Username, sysAp.client.UserInfo.Password)))
-	conn, _, err := websocket.DefaultDialer.Dial(sysAp.getWebSocketUrl(), http.Header{
+	conn, _, err := dialer.Dial(sysAp.getWebSocketUrl(), http.Header{
 		"Authorization": []string{fmt.Sprintf("Basic %s", basicAuth)},
 	})
 
