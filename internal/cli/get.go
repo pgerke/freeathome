@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -64,7 +65,7 @@ func setup(configFile string, tlsEnabled, skipTLSVerify bool, logLevel string) (
 }
 
 // GetDeviceList retrieves and displays the device list
-func GetDeviceList(tlsEnabled, skipTLSVerify bool, logLevel string) error {
+func GetDeviceList(tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string) error {
 	// Setup system access point
 	sysAp, err := setup("", tlsEnabled, skipTLSVerify, logLevel)
 	if err != nil {
@@ -81,7 +82,17 @@ func GetDeviceList(tlsEnabled, skipTLSVerify bool, logLevel string) error {
 		return fmt.Errorf("failed to get device list: %w", err)
 	}
 
-	// Display the device list
+	// Output depending on output format
+	if outputFormat == "json" {
+		jsonData, err := json.Marshal(deviceList)
+		if err != nil {
+			return fmt.Errorf("failed to marshal device list to JSON: %w", err)
+		}
+		fmt.Println(string(jsonData))
+		return nil
+	}
+
+	// Check if device list is empty
 	if deviceList == nil || len(*deviceList) == 0 {
 		fmt.Println("No devices found")
 		return nil
@@ -99,7 +110,7 @@ func GetDeviceList(tlsEnabled, skipTLSVerify bool, logLevel string) error {
 		return nil
 	}
 
-	// Display device list
+	// Output as plain text (one device per line)
 	for _, deviceSerial := range devices {
 		fmt.Println(deviceSerial)
 	}

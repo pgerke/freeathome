@@ -12,6 +12,8 @@ var (
 	skipTLSVerify bool
 	// Logging configuration
 	logLevel string
+	// Output format configuration
+	outputFormat string
 
 	getCmd = &cobra.Command{
 		Use:   "get",
@@ -40,8 +42,11 @@ func init() {
 
 	// Add logging configuration flag
 	getCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set the log level (debug, info, warn, error)")
+
+	// Add output format flag
+	getCmd.PersistentFlags().StringVar(&outputFormat, "output", "json", "Set the output format (json, text)")
 }
 
 func runGetDeviceList(cmd *cobra.Command, args []string) error {
-	return cli.GetDeviceList(tlsEnabled, skipTLSVerify, logLevel)
+	return cli.GetDeviceList(tlsEnabled, skipTLSVerify, logLevel, outputFormat)
 }

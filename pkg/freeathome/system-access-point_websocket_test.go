@@ -157,6 +157,55 @@ func TestSystemAccessPointConnectWebSocketSuccess(t *testing.T) {
 	sysAp.ConnectWebSocket(ctx, 1*time.Hour)
 }
 
+// TestSystemAccessPointConnectWebSocketSkipTlsVerify tests the successful connection of the WebSocket with skip TLS verify.
+func TestSystemAccessPointConnectWebSocketSkipTlsVerify(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sysAp, buf, records := setup(t, true, true)
+
+	// Mock the WebSocket connection
+	dialer := &websocket.Dialer{}
+	websocket.DefaultDialer = dialer
+
+	// Mock the WebSocket server
+	var conn *websocket.Conn
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{}
+		var err error
+		conn, err = upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Fatalf("Failed to upgrade WebSocket: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	sysAp.hostName = strings.TrimPrefix(server.URL, "https://")
+
+	// Wait for the expected record in a separate goroutine
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				// Check the log output
+				logOutput := buf.String()
+				if !strings.Contains(logOutput, "this is not recommended") {
+					t.Errorf("Expected log output to contain 'this is not recommended', got: %s", logOutput)
+				}
+				return
+			case record := <-records:
+				if record.Level == slog.LevelInfo && strings.Contains(record.Message, "web socket connected successfully") {
+					cancel()
+					_ = conn.Close()
+				}
+			}
+		}
+	}()
+
+	// Run ConnectWebSocket in a separate goroutine
+	sysAp.ConnectWebSocket(ctx, 1*time.Hour)
+}
+
 // TestSystemAccessPointConnectWebSocketContextCancelled tests the behavior when the context is cancelled.
 func TestSystemAccessPointConnectWebSocketContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
