@@ -16,14 +16,14 @@ type Config struct {
 }
 
 // load loads the configuration from file and environment variables
-func load(configFile string) (*Config, error) {
+func load(v *viper.Viper, configFile string) (*Config, error) {
 	// Initialize viper configuration
-	initConfig()
+	initConfig(v)
 
 	// Override config file if specified
 	if configFile != "" {
-		viper.SetConfigFile(configFile)
-		if err := viper.ReadInConfig(); err != nil {
+		v.SetConfigFile(configFile)
+		if err := v.ReadInConfig(); err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 				return nil, fmt.Errorf("error reading config file: %w", err)
 			}
@@ -32,7 +32,7 @@ func load(configFile string) (*Config, error) {
 
 	// Create config struct and unmarshal
 	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
@@ -40,18 +40,18 @@ func load(configFile string) (*Config, error) {
 }
 
 // save saves the configuration to file
-func (c *Config) save() error {
-	configDir := filepath.Dir(viper.ConfigFileUsed())
+func (c *Config) save(v *viper.Viper) error {
+	configDir := filepath.Dir(v.ConfigFileUsed())
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return fmt.Errorf("error creating config directory: %w", err)
 	}
 
 	// Set values in viper
-	viper.Set("hostname", c.Hostname)
-	viper.Set("username", c.Username)
-	viper.Set("password", c.Password)
+	v.Set("hostname", c.Hostname)
+	v.Set("username", c.Username)
+	v.Set("password", c.Password)
 
-	if err := viper.WriteConfig(); err != nil {
+	if err := v.WriteConfig(); err != nil {
 		return fmt.Errorf("error writing config file: %w", err)
 	}
 	return nil
@@ -71,7 +71,7 @@ func (c *Config) update(hostname, username, password string) {
 }
 
 // printSummary prints a summary of the current configuration
-func (c *Config) printSummary() {
+func (c *Config) printSummary(v *viper.Viper) {
 	fmt.Println("Current configuration:")
 	fmt.Printf("  Hostname: %s\n", c.Hostname)
 	fmt.Printf("  Username: %s\n", c.Username)
@@ -81,18 +81,18 @@ func (c *Config) printSummary() {
 		fmt.Printf("  Password: %s\n", "(not set)")
 	}
 
-	if viper.ConfigFileUsed() != "" {
-		fmt.Printf("Config file: %s\n", viper.ConfigFileUsed())
+	if v.ConfigFileUsed() != "" {
+		fmt.Printf("Config file: %s\n", v.ConfigFileUsed())
 	} else {
 		fmt.Println("Config file: (not found)")
 	}
 }
 
 // initConfig initializes viper configuration
-func initConfig() {
+func initConfig(v *viper.Viper) {
 	// Set config file name and type
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
 
 	// Set default config file location
 	home, err := os.UserHomeDir()
@@ -101,20 +101,20 @@ func initConfig() {
 		return
 	}
 	configDir := filepath.Join(home, ".freeathome")
-	viper.AddConfigPath(configDir)
-	viper.SetConfigFile(filepath.Join(configDir, "config.yaml"))
+	v.AddConfigPath(configDir)
+	v.SetConfigFile(filepath.Join(configDir, "config.yaml"))
 
 	// Set environment variable prefix
-	viper.SetEnvPrefix("FREEATHOME")
-	viper.AutomaticEnv()
+	v.SetEnvPrefix("FREEATHOME")
+	v.AutomaticEnv()
 
 	// Map environment variables to config keys
-	_ = viper.BindEnv("hostname", "HOSTNAME")
-	_ = viper.BindEnv("username", "USERNAME")
-	_ = viper.BindEnv("password", "PASSWORD")
+	_ = v.BindEnv("hostname", "HOSTNAME")
+	_ = v.BindEnv("username", "USERNAME")
+	_ = v.BindEnv("password", "PASSWORD")
 
 	// Read config file if it exists
-	if err := viper.ReadInConfig(); err != nil {
+	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			fmt.Printf("Error reading config file: %v\n", err)
 		}

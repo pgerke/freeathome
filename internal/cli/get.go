@@ -10,6 +10,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/pgerke/freeathome/pkg/freeathome"
 	"github.com/pgerke/freeathome/pkg/models"
+	"github.com/spf13/viper"
 	"golang.org/x/term"
 )
 
@@ -30,9 +31,9 @@ func parseLogLevel(level string) slog.Level {
 	}
 }
 
-func setup(configFile string, tlsEnabled, skipTLSVerify bool, logLevel string) (*freeathome.SystemAccessPoint, error) {
+func setup(v *viper.Viper, configFile string, tlsEnabled, skipTLSVerify bool, logLevel string) (*freeathome.SystemAccessPoint, error) {
 	// Load configuration
-	cfg, err := load(configFile)
+	cfg, err := load(v, configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -65,9 +66,9 @@ func setup(configFile string, tlsEnabled, skipTLSVerify bool, logLevel string) (
 }
 
 // GetDeviceList retrieves and displays the device list
-func GetDeviceList(tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string) error {
+func GetDeviceList(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string) error {
 	// Setup system access point
-	sysAp, err := setup("", tlsEnabled, skipTLSVerify, logLevel)
+	sysAp, err := setup(v, "", tlsEnabled, skipTLSVerify, logLevel)
 	if err != nil {
 		return err
 	}

@@ -2,12 +2,14 @@ package cli
 
 import (
 	"fmt"
+
+	"github.com/spf13/viper"
 )
 
 // Configure handles the configuration process
-func Configure(configFile, hostname, username, password string) error {
+func Configure(v *viper.Viper, configFile, hostname, username, password string) error {
 	// Load current configuration
-	cfg, err := load(configFile)
+	cfg, err := load(v, configFile)
 	if err != nil {
 		return err
 	}
@@ -21,25 +23,25 @@ func Configure(configFile, hostname, username, password string) error {
 	}
 
 	// Save configuration
-	if err := cfg.save(); err != nil {
+	if err := cfg.save(v); err != nil {
 		return err
 	}
 
 	// Print summary
-	cfg.printSummary()
+	cfg.printSummary(v)
 	return nil
 }
 
 // ShowConfiguration displays the current configuration
-func ShowConfiguration(configFile string) error {
+func ShowConfiguration(v *viper.Viper, configFile string) error {
 	// Load current configuration
-	cfg, err := load(configFile)
+	cfg, err := load(v, configFile)
 	if err != nil {
 		return err
 	}
 
 	// Print current values
-	cfg.printSummary()
+	cfg.printSummary(v)
 	return nil
 }
 

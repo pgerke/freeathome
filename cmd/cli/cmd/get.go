@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pgerke/freeathome/internal/cli"
 )
@@ -48,5 +49,5 @@ func init() {
 }
 
 func runGetDeviceList(cmd *cobra.Command, args []string) error {
-	return cli.GetDeviceList(tlsEnabled, skipTLSVerify, logLevel, outputFormat)
+	return cli.GetDeviceList(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat)
 }

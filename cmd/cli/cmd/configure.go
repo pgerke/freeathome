@@ -60,9 +60,9 @@ func init() {
 }
 
 func runConfigure(cmd *cobra.Command, args []string) error {
-	return cli.Configure(cfgFile, hostname, username, password)
+	return cli.Configure(viper.GetViper(), cfgFile, hostname, username, password)
 }
 
 func runShow(cmd *cobra.Command, args []string) error {
-	return cli.ShowConfiguration(cfgFile)
+	return cli.ShowConfiguration(viper.GetViper(), cfgFile)
 }

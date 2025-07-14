@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/viper"
 )
 
 func TestConfig_Update(t *testing.T) {
@@ -63,7 +65,7 @@ password: "test-pass"
 	}
 
 	// Load config
-	cfg, err := load(configFile)
+	cfg, err := load(viper.GetViper(), configFile)
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
