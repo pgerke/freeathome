@@ -17,6 +17,10 @@ type Config struct {
 
 // load loads the configuration from file and environment variables
 func load(v *viper.Viper, configFile string) (*Config, error) {
+	if v == nil {
+		return nil, fmt.Errorf("viper is nil")
+	}
+
 	// Initialize viper configuration
 	initConfig(v)
 
