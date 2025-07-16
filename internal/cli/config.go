@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+var configFileDir, _ = os.UserHomeDir()
+
 // Config represents the CLI configuration settings
 type Config struct {
 	Hostname string `mapstructure:"hostname" yaml:"hostname"`
@@ -99,12 +101,7 @@ func initConfig(v *viper.Viper) {
 	v.SetConfigType("yaml")
 
 	// Set default config file location
-	home, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Println("Error getting home directory:", err)
-		return
-	}
-	configDir := filepath.Join(home, ".freeathome")
+	configDir := filepath.Join(configFileDir, ".freeathome")
 	v.AddConfigPath(configDir)
 	v.SetConfigFile(filepath.Join(configDir, "config.yaml"))
 

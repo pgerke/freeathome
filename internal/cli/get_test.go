@@ -132,17 +132,15 @@ username: test-user`,
 		},
 		{
 			name:          "Empty configuration",
-			configFile:    "test-config.yaml",
 			configData:    "",
 			tlsEnabled:    true,
 			skipTLSVerify: false,
 			logLevel:      "info",
 			expectError:   true,
-			errorContains: "error reading config file",
+			errorContains: "hostname not configured",
 		},
 		{
-			name:       "HTTP configuration",
-			configFile: "test-config.yaml",
+			name: "HTTP configuration",
 			configData: `hostname: test-host
 username: test-user
 password: test-pass`,
@@ -156,24 +154,27 @@ password: test-pass`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create temporary directory for test
-			tempDir := t.TempDir()
+			configFileDir = t.TempDir()
 
-			var configFilePath string
+			// Create config file in the expected location
+			configDir := filepath.Join(configFileDir, ".freeathome")
+			if err := os.MkdirAll(configDir, 0755); err != nil {
+				t.Fatalf("Failed to create config directory: %v", err)
+			}
+
+			configFilePath := filepath.Join(configDir, "config.yaml")
 			if tt.configData != "" {
-				configFilePath = filepath.Join(tempDir, tt.configFile)
 				err := os.WriteFile(configFilePath, []byte(tt.configData), 0644)
 				if err != nil {
 					t.Fatalf("Failed to create test config file: %v", err)
 				}
-			} else {
-				configFilePath = filepath.Join(tempDir, tt.configFile)
 			}
 
 			// Create a fresh viper instance for testing
 			v := viper.New()
 
 			// Test setup function
-			sysAp, err := setup(v, configFilePath, tt.tlsEnabled, tt.skipTLSVerify, tt.logLevel)
+			sysAp, err := setup(v, "", tt.tlsEnabled, tt.skipTLSVerify, tt.logLevel)
 
 			if tt.expectError {
 				if err == nil {
@@ -196,8 +197,14 @@ password: test-pass`,
 // TestSetupWithInvalidConfigFile tests setup with an invalid config file
 func TestSetupWithInvalidConfigFile(t *testing.T) {
 	// Create a temporary config file with invalid YAML
-	tempDir := t.TempDir()
-	configFile := filepath.Join(tempDir, "invalid-config.yaml")
+	configFileDir := t.TempDir()
+
+	configDir := filepath.Join(configFileDir, ".freeathome")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("Failed to create config directory: %v", err)
+	}
+
+	configFile := filepath.Join(configDir, "config.yaml")
 
 	invalidYAML := `hostname: test-host
 username: [invalid array]
@@ -212,7 +219,7 @@ password: test-pass`
 	v := viper.New()
 
 	// Test setup function - should fail due to invalid YAML
-	_, err = setup(v, configFile, true, false, "info")
+	_, err = setup(v, "", true, false, "info")
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
 	}
@@ -220,11 +227,8 @@ password: test-pass`
 
 // TestSetupWithNilViper tests setup with nil viper instance
 func TestSetupWithNilViper(t *testing.T) {
-	tempDir := t.TempDir()
-	configFile := filepath.Join(tempDir, "test-config.yaml")
-
 	// Test setup function with nil viper
-	_, err := setup(nil, configFile, true, false, "info")
+	_, err := setup(nil, "", true, false, "info")
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
 	}
@@ -293,10 +297,10 @@ password: test-pass`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create temporary directory for test
-			tempDir := t.TempDir()
+			configFileDir := t.TempDir()
 
 			// Create config file in the expected location (~/.freeathome/config.yaml)
-			configDir := filepath.Join(tempDir, ".freeathome")
+			configDir := filepath.Join(configFileDir, ".freeathome")
 			if err := os.MkdirAll(configDir, 0755); err != nil {
 				t.Fatalf("Failed to create config directory: %v", err)
 			}
@@ -367,10 +371,10 @@ func TestGetDeviceListWithNilViper(t *testing.T) {
 // TestGetDeviceListFunctionExists tests that the GetDeviceList function exists and can be called
 func TestGetDeviceListFunctionExists(t *testing.T) {
 	// This test verifies that the GetDeviceList function exists and can be called
-	tempDir := t.TempDir()
+	configFileDir := t.TempDir()
 
 	// Create config file in the expected location (~/.freeathome/config.yaml)
-	configDir := filepath.Join(tempDir, ".freeathome")
+	configDir := filepath.Join(configFileDir, ".freeathome")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatalf("Failed to create config directory: %v", err)
 	}
@@ -403,8 +407,15 @@ password: test-pass`
 // TestSetupFunctionExists tests that the setup function exists and can be called
 func TestSetupFunctionExists(t *testing.T) {
 	// This test verifies that the setup function exists and can be called
-	tempDir := t.TempDir()
-	configFile := filepath.Join(tempDir, "test-config.yaml")
+	configFileDir := t.TempDir()
+
+	// Create config file in the expected location
+	configDir := filepath.Join(configFileDir, ".freeathome")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("Failed to create config directory: %v", err)
+	}
+
+	configFile := filepath.Join(configDir, "config.yaml")
 
 	// Create a minimal config file
 	configData := `hostname: test-host
