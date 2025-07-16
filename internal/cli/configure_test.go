@@ -10,23 +10,72 @@ import (
 
 // TestConfigure tests the Configure function with various scenarios
 func TestConfigure(t *testing.T) {
-	// TODO: Remove this once we have a way to test the interactive prompts
-	t.Skip("Skipping Configure test due to interactive prompts")
 	tests := []struct {
 		name           string
 		configFile     string
 		hostname       string
 		username       string
 		password       string
+		nonInteractive bool
 		existingConfig string
 		expectError    bool
+		errorContains  string
 	}{
 		{
-			name:       "Update existing configuration with all values",
-			configFile: "test-config.yaml",
-			hostname:   "new-host",
-			username:   "new-user",
-			password:   "new-pass",
+			name:           "Update existing configuration with all values",
+			configFile:     "test-config.yaml",
+			hostname:       "new-host",
+			username:       "new-user",
+			password:       "new-pass",
+			nonInteractive: true,
+			existingConfig: `hostname: old-host
+username: old-user
+password: old-pass`,
+			expectError: false,
+		},
+		{
+			name:           "Non-interactive mode with missing hostname",
+			configFile:     "test-config.yaml",
+			hostname:       "",
+			username:       "test-user",
+			password:       "test-pass",
+			nonInteractive: true,
+			existingConfig: `username: old-user
+password: old-pass`,
+			expectError:   true,
+			errorContains: "hostname is required but not provided",
+		},
+		{
+			name:           "Non-interactive mode with missing username",
+			configFile:     "test-config.yaml",
+			hostname:       "test-host",
+			username:       "",
+			password:       "test-pass",
+			nonInteractive: true,
+			existingConfig: `hostname: old-host
+password: old-pass`,
+			expectError:   true,
+			errorContains: "username is required but not provided",
+		},
+		{
+			name:           "Non-interactive mode with missing password",
+			configFile:     "test-config.yaml",
+			hostname:       "test-host",
+			username:       "test-user",
+			password:       "",
+			nonInteractive: true,
+			existingConfig: `hostname: old-host
+username: old-user`,
+			expectError:   true,
+			errorContains: "password is required but not provided",
+		},
+		{
+			name:           "Non-interactive mode with all values provided",
+			configFile:     "test-config.yaml",
+			hostname:       "test-host",
+			username:       "test-user",
+			password:       "test-pass",
+			nonInteractive: true,
 			existingConfig: `hostname: old-host
 username: old-user
 password: old-pass`,
@@ -39,31 +88,40 @@ password: old-pass`,
 			// Create temporary directory for test
 			tempDir := t.TempDir()
 
-			// Create config file with existing config
-			configFilePath := filepath.Join(tempDir, tt.configFile)
-			err := os.WriteFile(configFilePath, []byte(tt.existingConfig), 0644)
-			if err != nil {
-				t.Fatalf("Failed to create test config file: %v", err)
+			// Create config file if existing config is provided
+			var configFilePath string
+			if tt.existingConfig != "" {
+				configFilePath = filepath.Join(tempDir, tt.configFile)
+				err := os.WriteFile(configFilePath, []byte(tt.existingConfig), 0644)
+				if err != nil {
+					t.Fatalf("Failed to create test config file: %v", err)
+				}
+			} else if tt.configFile != "" {
+				configFilePath = filepath.Join(tempDir, tt.configFile)
 			}
 
 			// Create a fresh viper instance for testing
 			v := viper.New()
 
 			// Test Configure function
-			err = Configure(v, configFilePath, tt.hostname, tt.username, tt.password)
+			err := Configure(v, configFilePath, tt.hostname, tt.username, tt.password, tt.nonInteractive)
 
-			if tt.expectError && err == nil {
-				t.Error("Expected error but got none")
-			}
-			if !tt.expectError && err != nil {
-				t.Errorf("Unexpected error: %v", err)
-			}
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected error but got none")
+				} else if tt.errorContains != "" && !contains(err.Error(), tt.errorContains) {
+					t.Errorf("Expected error to contain '%s', got '%s'", tt.errorContains, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
 
-			// If no error expected, verify config was saved
-			if !tt.expectError && err == nil {
-				// Verify the config file was updated
-				if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
-					t.Error("Expected config file to exist but it doesn't")
+				// If no error expected, verify config was saved
+				if tt.configFile != "" {
+					if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
+						t.Error("Expected config file to exist but it doesn't")
+					}
 				}
 			}
 		})
@@ -89,7 +147,7 @@ password: test-pass`
 	v := viper.New()
 
 	// Test Configure function - should fail due to invalid YAML
-	err = Configure(v, configFile, "test-host", "test-user", "test-pass")
+	err = Configure(v, configFile, "test-host", "test-user", "test-pass", true)
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
 	}
@@ -182,7 +240,7 @@ func TestConfigureWithNilViper(t *testing.T) {
 	configFile := filepath.Join(tempDir, "test-config.yaml")
 
 	// Test Configure function with nil viper
-	err := Configure(nil, configFile, "test-host", "test-user", "test-pass")
+	err := Configure(nil, configFile, "test-host", "test-user", "test-pass", true)
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
 	}
@@ -220,13 +278,10 @@ password: test-pass`
 	// Create a fresh viper instance for testing
 	v := viper.New()
 
-	// Test that the function can be called (it will fail due to interactive prompts, but that's expected)
-	err = Configure(v, configFile, "new-host", "new-user", "new-pass")
-	// We expect this to fail due to interactive prompts, but the function should exist
-	if err == nil {
-		t.Log("Configure function exists and was called successfully")
-	} else {
-		t.Logf("Configure function exists but failed as expected: %v", err)
+	// Test that the function can be called in non-interactive mode
+	err = Configure(v, configFile, "new-host", "new-user", "new-pass", true)
+	if err != nil {
+		t.Errorf("Configure function failed unexpectedly: %v", err)
 	}
 }
 

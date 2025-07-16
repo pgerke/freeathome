@@ -16,6 +16,9 @@ var (
 	username string
 	password string
 
+	// Non-interactive mode flag
+	nonInteractive bool
+
 	configureCmd = &cobra.Command{
 		Use:   "configure",
 		Short: "Configure connection settings for free@home system access point",
@@ -26,6 +29,7 @@ using flags, environment variables, or a YAML configuration file.
 Examples:
   free@home configure --hostname 192.168.1.100 --username admin --password mypass
   free@home configure --config ~/.freeathome/config.yaml
+  free@home configure --non-interactive --hostname 192.168.1.100 --username admin --password mypass
   export FREEATHOME_HOSTNAME=192.168.1.100
   export FREEATHOME_USERNAME=admin
   export FREEATHOME_PASSWORD=mypass
@@ -52,6 +56,7 @@ func init() {
 	configureCmd.Flags().StringVar(&hostname, "hostname", "", "free@home system hostname or IP address")
 	configureCmd.Flags().StringVar(&username, "username", "", "username for authentication")
 	configureCmd.Flags().StringVar(&password, "password", "", "password for authentication")
+	configureCmd.Flags().BoolVar(&nonInteractive, "non-interactive", false, "fail instead of prompting for missing configuration values")
 
 	// Bind flags to viper
 	_ = viper.BindPFlag("hostname", configureCmd.Flags().Lookup("hostname"))
@@ -60,7 +65,7 @@ func init() {
 }
 
 func runConfigure(cmd *cobra.Command, args []string) error {
-	return cli.Configure(viper.GetViper(), cfgFile, hostname, username, password)
+	return cli.Configure(viper.GetViper(), cfgFile, hostname, username, password, nonInteractive)
 }
 
 func runShow(cmd *cobra.Command, args []string) error {

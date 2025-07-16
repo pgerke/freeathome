@@ -7,7 +7,7 @@ import (
 )
 
 // Configure handles the configuration process
-func Configure(v *viper.Viper, configFile, hostname, username, password string) error {
+func Configure(v *viper.Viper, configFile, hostname, username, password string, nonInteractive bool) error {
 	// Load current configuration
 	cfg, err := load(v, configFile)
 	if err != nil {
@@ -17,9 +17,23 @@ func Configure(v *viper.Viper, configFile, hostname, username, password string) 
 	// Update with new values from flags
 	cfg.update(hostname, username, password)
 
-	// Prompt for missing values
-	if err := promptForValues(cfg); err != nil {
-		return err
+	// Handle missing values based on interactive mode
+	if nonInteractive {
+		// In non-interactive mode, validate that all required fields are present
+		if cfg.Hostname == "" {
+			return fmt.Errorf("hostname is required but not provided")
+		}
+		if cfg.Username == "" {
+			return fmt.Errorf("username is required but not provided")
+		}
+		if cfg.Password == "" {
+			return fmt.Errorf("password is required but not provided")
+		}
+	} else {
+		// In interactive mode, prompt for missing values
+		if err := promptForValues(cfg); err != nil {
+			return err
+		}
 	}
 
 	// Save configuration
