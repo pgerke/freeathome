@@ -1,10 +1,14 @@
 package cli
 
 import (
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/pgerke/freeathome/pkg/freeathome"
 	"github.com/spf13/viper"
 )
 
@@ -179,7 +183,7 @@ password: test-pass`,
 			if tt.expectError {
 				if err == nil {
 					t.Error("Expected error but got none")
-				} else if tt.errorContains != "" && !contains(err.Error(), tt.errorContains) {
+				} else if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
 					t.Errorf("Expected error to contain '%s', got '%s'", tt.errorContains, err.Error())
 				}
 			} else {
@@ -234,100 +238,130 @@ func TestSetupWithNilViper(t *testing.T) {
 	}
 }
 
-// TestGetDeviceList tests the GetDeviceList function
 func TestGetDeviceList(t *testing.T) {
-	// TODO: Remove this once we have a way to test the network calls
-	t.Skip("Skipping GetDeviceList for now, need to mock the network calls")
 	tests := []struct {
 		name          string
-		configData    string
-		tlsEnabled    bool
-		skipTLSVerify bool
-		logLevel      string
 		outputFormat  string
+		responseBody  string
+		responseCode  int
 		expectError   bool
 		errorContains string
+		expectOutput  string
 	}{
 		{
-			name: "Valid configuration with JSON output",
-			configData: `hostname: test-host
-username: test-user
-password: test-pass`,
-			tlsEnabled:    true,
-			skipTLSVerify: false,
-			logLevel:      "info",
-			outputFormat:  "json",
-			expectError:   false,
+			name:         "Successful JSON output",
+			outputFormat: "json",
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": [
+    "ABB7F595EC47",
+    "ABB7013B85DE",
+    "ABB7F5947E20"
+  ]}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: `{"00000000-0000-0000-0000-000000000000":["ABB7F595EC47","ABB7013B85DE","ABB7F5947E20"]}
+`,
 		},
 		{
-			name: "Valid configuration with text output",
-			configData: `hostname: test-host
-username: test-user
-password: test-pass`,
-			tlsEnabled:    true,
-			skipTLSVerify: false,
-			logLevel:      "info",
-			outputFormat:  "text",
-			expectError:   false,
+			name:         "Successful text output",
+			outputFormat: "text",
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": [
+    "ABB7F595EC47",
+    "ABB7013B85DE",
+    "ABB7F5947E20"
+  ]}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "ABB7F595EC47\nABB7013B85DE\nABB7F5947E20\n",
 		},
 		{
-			name: "Missing hostname",
-			configData: `username: test-user
-password: test-pass`,
-			tlsEnabled:    true,
-			skipTLSVerify: false,
-			logLevel:      "info",
+			name:         "Empty device list",
+			outputFormat: "text",
+			responseBody: `{}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "No devices found\n",
+		},
+		{
+			name:         "Empty devices for EmptyUUID",
+			outputFormat: "text",
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": []
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "No devices found\n",
+		},
+		{
+			name:         "No devices for EmptyUUID",
+			outputFormat: "text",
+			responseBody: `{
+  "other-uuid": ["ABB7F595EC47", "ABB7013B85DE"]
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "No devices found for system access point\n",
+		},
+		{
+			name:          "HTTP error response",
 			outputFormat:  "text",
+			responseBody:  `{"error": "Unauthorized"}`,
+			responseCode:  http.StatusUnauthorized,
 			expectError:   true,
-			errorContains: "hostname not configured",
+			errorContains: "failed to get device list",
 		},
 		{
-			name: "HTTP configuration",
-			configData: `hostname: test-host
-username: test-user
-password: test-pass`,
-			tlsEnabled:    false,
-			skipTLSVerify: false,
-			logLevel:      "debug",
+			name:          "Invalid JSON response",
 			outputFormat:  "text",
-			expectError:   false,
+			responseBody:  `invalid json`,
+			responseCode:  http.StatusOK,
+			expectError:   true,
+			errorContains: "failed to get device list",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create temporary directory for test
-			configFileDir := t.TempDir()
+			// Create viper instance
+			v := setupViper(t)
 
-			// Create config file in the expected location (~/.freeathome/config.yaml)
-			configDir := filepath.Join(configFileDir, ".freeathome")
-			if err := os.MkdirAll(configDir, 0755); err != nil {
-				t.Fatalf("Failed to create config directory: %v", err)
+			// Setup mock SystemAccessPoint
+			sysAp, _, _ := setupMock(t, v, tt.responseCode, tt.responseBody)
+
+			// Override the setupFunc to use the mock SystemAccessPoint
+			setupFunc = func(_ *viper.Viper, _ string, _ bool, _ bool, _ string) (*freeathome.SystemAccessPoint, error) {
+				return sysAp, nil
 			}
+			defer func() {
+				setupFunc = setup
+			}()
 
-			configFilePath := filepath.Join(configDir, "config.yaml")
-			if tt.configData != "" {
-				err := os.WriteFile(configFilePath, []byte(tt.configData), 0644)
-				if err != nil {
-					t.Fatalf("Failed to create test config file: %v", err)
-				}
-			}
-
-			// Create a fresh viper instance for testing
-			v := viper.New()
+			// Capture stdout for output testing
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			defer func() { os.Stdout = oldStdout }()
 
 			// Test GetDeviceList function
-			err := GetDeviceList(v, tt.tlsEnabled, tt.skipTLSVerify, tt.logLevel, tt.outputFormat)
+			err := GetDeviceList(v, false, false, "info", tt.outputFormat)
+
+			// Close pipe and read output
+			_ = w.Close()
+			output, _ := io.ReadAll(r)
 
 			if tt.expectError {
 				if err == nil {
 					t.Error("Expected error but got none")
-				} else if tt.errorContains != "" && !contains(err.Error(), tt.errorContains) {
+				} else if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
 					t.Errorf("Expected error to contain '%s', got '%s'", tt.errorContains, err.Error())
 				}
 			} else {
 				if err != nil {
 					t.Errorf("Unexpected error: %v", err)
+				}
+				if tt.expectOutput != "" && string(output) != tt.expectOutput {
+					t.Errorf("Expected output '%s', got '%s'", tt.expectOutput, string(output))
 				}
 			}
 		})
@@ -337,8 +371,7 @@ password: test-pass`,
 // TestGetDeviceListWithInvalidConfigFile tests GetDeviceList with an invalid config file
 func TestGetDeviceListWithInvalidConfigFile(t *testing.T) {
 	// Create a temporary config file with invalid YAML
-	tempDir := t.TempDir()
-	configFile := filepath.Join(tempDir, "invalid-config.yaml")
+	configFile := filepath.Join(t.TempDir(), "invalid-config.yaml")
 
 	invalidYAML := `hostname: test-host
 username: [invalid array]
@@ -370,32 +403,11 @@ func TestGetDeviceListWithNilViper(t *testing.T) {
 
 // TestGetDeviceListFunctionExists tests that the GetDeviceList function exists and can be called
 func TestGetDeviceListFunctionExists(t *testing.T) {
-	// This test verifies that the GetDeviceList function exists and can be called
-	configFileDir := t.TempDir()
-
-	// Create config file in the expected location (~/.freeathome/config.yaml)
-	configDir := filepath.Join(configFileDir, ".freeathome")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		t.Fatalf("Failed to create config directory: %v", err)
-	}
-
-	configFile := filepath.Join(configDir, "config.yaml")
-
-	// Create a minimal config file
-	configData := `hostname: test-host
-username: test-user
-password: test-pass`
-
-	err := os.WriteFile(configFile, []byte(configData), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test config file: %v", err)
-	}
-
-	// Create a fresh viper instance for testing
-	v := viper.New()
+	// Create viper instance
+	v := setupViper(t)
 
 	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
-	err = GetDeviceList(v, true, false, "info", "text")
+	err := GetDeviceList(v, true, false, "info", "text")
 	// We expect this to fail due to network/connection issues, but the function should exist
 	if err == nil {
 		t.Log("GetDeviceList function exists and was called successfully")
@@ -406,51 +418,15 @@ password: test-pass`
 
 // TestSetupFunctionExists tests that the setup function exists and can be called
 func TestSetupFunctionExists(t *testing.T) {
-	// This test verifies that the setup function exists and can be called
-	configFileDir := t.TempDir()
-
-	// Create config file in the expected location
-	configDir := filepath.Join(configFileDir, ".freeathome")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		t.Fatalf("Failed to create config directory: %v", err)
-	}
-
-	configFile := filepath.Join(configDir, "config.yaml")
-
-	// Create a minimal config file
-	configData := `hostname: test-host
-username: test-user
-password: test-pass`
-
-	err := os.WriteFile(configFile, []byte(configData), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test config file: %v", err)
-	}
-
-	// Create a fresh viper instance for testing
-	v := viper.New()
+	// Create viper instance
+	v := setupViper(t)
 
 	// Test that the function can be called
-	sysAp, err := setup(v, configFile, true, false, "info")
+	sysAp, err := setup(v, "", true, false, "info")
 	if err != nil {
 		t.Errorf("setup failed unexpectedly: %v", err)
 	}
 	if sysAp == nil {
 		t.Error("Expected SystemAccessPoint to be created, got nil")
 	}
-}
-
-// Helper function to check if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > len(substr) && (s[:len(substr)] == substr ||
-			s[len(s)-len(substr):] == substr ||
-			func() bool {
-				for i := 1; i <= len(s)-len(substr); i++ {
-					if s[i:i+len(substr)] == substr {
-						return true
-					}
-				}
-				return false
-			}())))
 }

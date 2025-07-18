@@ -53,14 +53,17 @@ type SystemAccessPoint struct {
 }
 
 // NewSystemAccessPoint creates a new SystemAccessPoint with the specified host name, user name, password, TLS enabled flag, skip TLS verify flag, verbose errors flag, and logger.
-func NewSystemAccessPoint(hostName string, userName string, password string, tlsEnabled bool, skipTLSVerify bool, verboseErrors bool, logger models.Logger) *SystemAccessPoint {
+func NewSystemAccessPoint(hostName string, userName string, password string, tlsEnabled bool, skipTLSVerify bool, verboseErrors bool, logger models.Logger, client *resty.Client) *SystemAccessPoint {
 	if logger == nil {
 		logger = NewDefaultLogger(nil)
 		logger.Warn("No logger provided for SystemAccessPoint. Using default logger.")
 	}
 
 	// Create REST client with basic auth
-	client := resty.New().SetBasicAuth(userName, password)
+	if client == nil {
+		client = resty.New()
+	}
+	client.SetBasicAuth(userName, password)
 
 	// Configure TLS settings if TLS is enabled
 	if tlsEnabled && skipTLSVerify {

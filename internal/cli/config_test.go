@@ -114,39 +114,19 @@ func TestLoadWithNilViper(t *testing.T) {
 
 // TestLoadWithValidFile tests loading configuration from a valid file
 func TestLoadWithValidFile(t *testing.T) {
-	// Create a temporary config file
-	tempDir := t.TempDir()
-	configFile := filepath.Join(tempDir, "config.yaml")
-
-	configContent := `hostname: test-host
+	configData := `hostname: test-host
 username: test-user
 password: test-pass`
 
-	err := os.WriteFile(configFile, []byte(configContent), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test config file: %v", err)
-	}
-
-	// Create a fresh viper instance for testing
-	v := viper.New()
+	v := createViperWithConfig(t, configData)
 
 	// Load configuration
-	cfg, err := load(v, configFile)
+	cfg, err := load(v, v.ConfigFileUsed())
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
 
-	if cfg.Hostname != "test-host" {
-		t.Errorf("Expected Hostname to be 'test-host', got '%s'", cfg.Hostname)
-	}
-
-	if cfg.Username != "test-user" {
-		t.Errorf("Expected Username to be 'test-user', got '%s'", cfg.Username)
-	}
-
-	if cfg.Password != "test-pass" {
-		t.Errorf("Expected Password to be 'test-pass', got '%s'", cfg.Password)
-	}
+	assertConfigValues(t, cfg, "test-host", "test-user", "test-pass")
 }
 
 // TestLoadWithNonExistentFile tests loading configuration when file doesn't exist

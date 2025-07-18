@@ -14,6 +14,8 @@ import (
 	"golang.org/x/term"
 )
 
+var setupFunc = setup
+
 // parseLogLevel converts a string log level to slog.Level
 func parseLogLevel(level string) slog.Level {
 	switch strings.ToLower(level) {
@@ -60,7 +62,7 @@ func setup(v *viper.Viper, configFile string, tlsEnabled, skipTLSVerify bool, lo
 	logger := freeathome.NewDefaultLogger(handler)
 
 	// Create system access point client
-	sysAp := freeathome.NewSystemAccessPoint(cfg.Hostname, cfg.Username, cfg.Password, tlsEnabled, skipTLSVerify, false, logger)
+	sysAp := freeathome.NewSystemAccessPoint(cfg.Hostname, cfg.Username, cfg.Password, tlsEnabled, skipTLSVerify, false, logger, nil)
 
 	return sysAp, nil
 }
@@ -68,7 +70,7 @@ func setup(v *viper.Viper, configFile string, tlsEnabled, skipTLSVerify bool, lo
 // GetDeviceList retrieves and displays the device list
 func GetDeviceList(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string) error {
 	// Setup system access point
-	sysAp, err := setup(v, "", tlsEnabled, skipTLSVerify, logLevel)
+	sysAp, err := setupFunc(v, "", tlsEnabled, skipTLSVerify, logLevel)
 	if err != nil {
 		return err
 	}

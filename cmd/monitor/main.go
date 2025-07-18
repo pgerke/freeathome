@@ -66,7 +66,7 @@ func run(ctx context.Context) int {
 	}
 
 	// Create a new system access point with the specified host name, user name, password, TLS enabled flag, skip TLS verify flag, verbose errors flag, and logger.
-	sysAp := freeathome.NewSystemAccessPoint(host, user, password, false, false, true, logger)
+	sysAp := freeathome.NewSystemAccessPoint(host, user, password, false, false, true, logger, nil)
 
 	// Connect to the system access point websocket
 	sysAp.ConnectWebSocket(ctx, 30*time.Second) // TODO: make this configurable -> command line flag

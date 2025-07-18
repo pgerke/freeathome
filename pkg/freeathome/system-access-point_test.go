@@ -15,7 +15,7 @@ func TestSystemAccessPointDefaultLogger(t *testing.T) {
 	slog.SetDefault(slog.New(handler))
 
 	// Create a SystemAccessPoint with the default logger
-	NewSystemAccessPoint("localhost", "user", "password", false, false, false, nil)
+	NewSystemAccessPoint("localhost", "user", "password", false, false, false, nil, nil)
 
 	// Check if the log output contains the expected message
 	logOutput := buf.String()

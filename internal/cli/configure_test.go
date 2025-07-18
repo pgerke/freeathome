@@ -2,7 +2,7 @@ package cli
 
 import (
 	"os"
-	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -85,19 +85,12 @@ password: old-pass`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create temporary directory for test
-			tempDir := t.TempDir()
-
 			// Create config file if existing config is provided
 			var configFilePath string
 			if tt.existingConfig != "" {
-				configFilePath = filepath.Join(tempDir, tt.configFile)
-				err := os.WriteFile(configFilePath, []byte(tt.existingConfig), 0644)
-				if err != nil {
-					t.Fatalf("Failed to create test config file: %v", err)
-				}
+				configFilePath = createTestConfigFile(t, tt.existingConfig)
 			} else if tt.configFile != "" {
-				configFilePath = filepath.Join(tempDir, tt.configFile)
+				configFilePath = createTestConfigFile(t, "")
 			}
 
 			// Create a fresh viper instance for testing
@@ -109,7 +102,7 @@ password: old-pass`,
 			if tt.expectError {
 				if err == nil {
 					t.Error("Expected error but got none")
-				} else if tt.errorContains != "" && !contains(err.Error(), tt.errorContains) {
+				} else if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
 					t.Errorf("Expected error to contain '%s', got '%s'", tt.errorContains, err.Error())
 				}
 			} else {
@@ -130,24 +123,15 @@ password: old-pass`,
 
 // TestConfigureWithInvalidConfigFile tests Configure with an invalid config file
 func TestConfigureWithInvalidConfigFile(t *testing.T) {
-	// Create a temporary config file with invalid YAML
-	tempDir := t.TempDir()
-	configFile := filepath.Join(tempDir, "invalid-config.yaml")
-
 	invalidYAML := `hostname: test-host
 username: [invalid array]
 password: test-pass`
 
-	err := os.WriteFile(configFile, []byte(invalidYAML), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test config file: %v", err)
-	}
-
-	// Create a fresh viper instance for testing
+	configFile := createTestConfigFile(t, invalidYAML)
 	v := viper.New()
 
 	// Test Configure function - should fail due to invalid YAML
-	err = Configure(v, configFile, "test-host", "test-user", "test-pass", true)
+	err := Configure(v, configFile, "test-host", "test-user", "test-pass", true)
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
 	}
@@ -179,19 +163,8 @@ password: test-pass`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create temporary directory for test
-			tempDir := t.TempDir()
-
-			var configFilePath string
-			if tt.configData != "" {
-				configFilePath = filepath.Join(tempDir, tt.configFile)
-				err := os.WriteFile(configFilePath, []byte(tt.configData), 0644)
-				if err != nil {
-					t.Fatalf("Failed to create test config file: %v", err)
-				}
-			} else {
-				configFilePath = filepath.Join(tempDir, tt.configFile)
-			}
+			// Create config file
+			configFilePath := createTestConfigFile(t, tt.configData)
 
 			// Create a fresh viper instance for testing
 			v := viper.New()
@@ -211,24 +184,15 @@ password: test-pass`,
 
 // TestShowConfigurationWithInvalidConfig tests ShowConfiguration with invalid config
 func TestShowConfigurationWithInvalidConfig(t *testing.T) {
-	// Create a temporary config file with invalid YAML
-	tempDir := t.TempDir()
-	configFile := filepath.Join(tempDir, "invalid-config.yaml")
-
 	invalidYAML := `hostname: test-host
 username: [invalid array]
 password: test-pass`
 
-	err := os.WriteFile(configFile, []byte(invalidYAML), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test config file: %v", err)
-	}
-
-	// Create a fresh viper instance for testing
+	configFile := createTestConfigFile(t, invalidYAML)
 	v := viper.New()
 
 	// Test ShowConfiguration function - should fail due to invalid YAML
-	err = ShowConfiguration(v, configFile)
+	err := ShowConfiguration(v, configFile)
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
 	}
@@ -236,11 +200,7 @@ password: test-pass`
 
 // TestConfigureWithNilViper tests Configure with nil viper instance
 func TestConfigureWithNilViper(t *testing.T) {
-	tempDir := t.TempDir()
-	configFile := filepath.Join(tempDir, "test-config.yaml")
-
-	// Test Configure function with nil viper
-	err := Configure(nil, configFile, "test-host", "test-user", "test-pass", true)
+	err := Configure(nil, "config.yaml", "test-host", "test-user", "test-pass", true)
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
 	}
@@ -248,11 +208,7 @@ func TestConfigureWithNilViper(t *testing.T) {
 
 // TestShowConfigurationWithNilViper tests ShowConfiguration with nil viper instance
 func TestShowConfigurationWithNilViper(t *testing.T) {
-	tempDir := t.TempDir()
-	configFile := filepath.Join(tempDir, "test-config.yaml")
-
-	// Test ShowConfiguration function with nil viper
-	err := ShowConfiguration(nil, configFile)
+	err := ShowConfiguration(nil, "config.yaml")
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
 	}
@@ -260,26 +216,15 @@ func TestShowConfigurationWithNilViper(t *testing.T) {
 
 // TestConfigureFunctionExists tests that the Configure function exists and can be called
 func TestConfigureFunctionExists(t *testing.T) {
-	// This test verifies that the Configure function exists and has the expected signature
-	// It doesn't test the actual functionality since that requires interactive input
-	tempDir := t.TempDir()
-	configFile := filepath.Join(tempDir, "test-config.yaml")
-
-	// Create a minimal config file
 	configData := `hostname: test-host
 username: test-user
 password: test-pass`
 
-	err := os.WriteFile(configFile, []byte(configData), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test config file: %v", err)
-	}
-
-	// Create a fresh viper instance for testing
+	configFile := createTestConfigFile(t, configData)
 	v := viper.New()
 
 	// Test that the function can be called in non-interactive mode
-	err = Configure(v, configFile, "new-host", "new-user", "new-pass", true)
+	err := Configure(v, configFile, "new-host", "new-user", "new-pass", true)
 	if err != nil {
 		t.Errorf("Configure function failed unexpectedly: %v", err)
 	}
@@ -287,25 +232,15 @@ password: test-pass`
 
 // TestShowConfigurationFunctionExists tests that the ShowConfiguration function exists and can be called
 func TestShowConfigurationFunctionExists(t *testing.T) {
-	// This test verifies that the ShowConfiguration function exists and can be called
-	tempDir := t.TempDir()
-	configFile := filepath.Join(tempDir, "test-config.yaml")
-
-	// Create a minimal config file
 	configData := `hostname: test-host
 username: test-user
 password: test-pass`
 
-	err := os.WriteFile(configFile, []byte(configData), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test config file: %v", err)
-	}
-
-	// Create a fresh viper instance for testing
+	configFile := createTestConfigFile(t, configData)
 	v := viper.New()
 
 	// Test that the function can be called
-	err = ShowConfiguration(v, configFile)
+	err := ShowConfiguration(v, configFile)
 	if err != nil {
 		t.Errorf("ShowConfiguration failed unexpectedly: %v", err)
 	}
