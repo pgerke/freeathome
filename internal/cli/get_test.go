@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -428,5 +430,338 @@ func TestSetupFunctionExists(t *testing.T) {
 	}
 	if sysAp == nil {
 		t.Error("Expected SystemAccessPoint to be created, got nil")
+	}
+}
+
+func TestGetConfiguration(t *testing.T) {
+	tests := []struct {
+		name          string
+		outputFormat  string
+		responseBody  string
+		responseCode  int
+		expectError   bool
+		errorContains string
+		expectOutput  string
+	}{
+		{
+			name:         "Successful JSON output",
+			outputFormat: "json",
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "devices": {
+      "ABB7F595EC47": {},
+      "ABB7013B85DE": {}
+    },
+    "floorplan": {
+      "floors": {}
+    },
+    "sysapName": "Test System",
+    "users": {
+      "user1": {
+        "enabled": false,
+        "flags": null,
+        "grantedPermissions": null,
+        "jid": "",
+        "name": "Test User",
+        "requestedPermissions": null,
+        "role": ""
+      }
+    }
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: `{"00000000-0000-0000-0000-000000000000":{"devices":{"ABB7013B85DE":{},"ABB7F595EC47":{}},"floorplan":{"floors":{}},"sysapName":"Test System","users":{"user1":{"enabled":false,"flags":null,"grantedPermissions":null,"jid":"","name":"Test User","requestedPermissions":null,"role":""}}}}
+`,
+		},
+		{
+			name:         "Successful text output",
+			outputFormat: "text",
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "devices": {
+      "ABB7F595EC47": {
+        "name": "Test Device 1",
+        "type": "switch"
+      }
+    },
+    "floorplan": {
+      "floors": {
+        "ground": {
+          "name": "Ground Floor",
+          "rooms": {}
+        }
+      }
+    },
+    "sysapName": "Test System",
+    "users": {
+      "user1": {
+        "name": "Test User"
+      }
+    }
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "System Access Point ID: 00000000-0000-0000-0000-000000000000\n  Name: Test System\n  Devices: 1\n  Users: 1\n  Floors: 1\n\n",
+		},
+		{
+			name:         "Empty configuration",
+			outputFormat: "text",
+			responseBody: `{}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "No configuration found\n",
+		},
+		{
+			name:          "HTTP error response",
+			outputFormat:  "text",
+			responseBody:  `{"error": "Unauthorized"}`,
+			responseCode:  http.StatusUnauthorized,
+			expectError:   true,
+			errorContains: "failed to get configuration",
+		},
+		{
+			name:          "Invalid JSON response",
+			outputFormat:  "text",
+			responseBody:  `invalid json`,
+			responseCode:  http.StatusOK,
+			expectError:   true,
+			errorContains: "failed to get configuration",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create viper instance
+			v := setupViper(t)
+
+			// Setup mock SystemAccessPoint
+			sysAp, _, _ := setupMock(t, v, tt.responseCode, tt.responseBody)
+
+			// Override the setupFunc to use the mock SystemAccessPoint
+			setupFunc = func(_ *viper.Viper, _ string, _ bool, _ bool, _ string) (*freeathome.SystemAccessPoint, error) {
+				return sysAp, nil
+			}
+			defer func() {
+				setupFunc = setup
+			}()
+
+			// Capture stdout for output testing
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			defer func() { os.Stdout = oldStdout }()
+
+			// Test GetConfiguration function
+			err := GetConfiguration(v, false, false, "info", tt.outputFormat)
+
+			// Close pipe and read output
+			_ = w.Close()
+			output, _ := io.ReadAll(r)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected error but got none")
+				} else if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("Expected error to contain '%s', got '%s'", tt.errorContains, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				if tt.expectOutput != "" && string(output) != tt.expectOutput {
+					t.Errorf("Expected output '%s', got '%s'", tt.expectOutput, string(output))
+				}
+			}
+		})
+	}
+}
+
+// TestGetConfigurationWithInvalidConfigFile tests GetConfiguration with an invalid config file
+func TestGetConfigurationWithInvalidConfigFile(t *testing.T) {
+	// Create a temporary config file with invalid YAML
+	configFile := filepath.Join(t.TempDir(), "invalid-config.yaml")
+
+	invalidYAML := `hostname: test-host
+username: [invalid array]
+password: test-pass`
+
+	err := os.WriteFile(configFile, []byte(invalidYAML), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test config file: %v", err)
+	}
+
+	// Create a fresh viper instance for testing
+	v := viper.New()
+
+	// Test GetConfiguration function - should fail due to invalid YAML
+	err = GetConfiguration(v, true, false, "info", "text")
+	if err == nil {
+		t.Error("Expected error when loading invalid config file, got none")
+	}
+}
+
+// TestGetConfigurationWithNilViper tests GetConfiguration with nil viper instance
+func TestGetConfigurationWithNilViper(t *testing.T) {
+	// Test GetConfiguration function with nil viper
+	err := GetConfiguration(nil, true, false, "info", "text")
+	if err == nil {
+		t.Error("Expected error with nil viper, got none")
+	}
+}
+
+// TestGetConfigurationFunctionExists tests that the GetConfiguration function exists and can be called
+func TestGetConfigurationFunctionExists(t *testing.T) {
+	// Create viper instance
+	v := setupViper(t)
+
+	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
+	err := GetConfiguration(v, true, false, "info", "text")
+	// We expect this to fail due to network/connection issues, but the function should exist
+	if err == nil {
+		t.Log("GetConfiguration function exists and was called successfully")
+	} else {
+		t.Logf("GetConfiguration function exists but failed as expected: %v", err)
+	}
+}
+
+// TestHandleSysApError tests the handleSysApError function with various scenarios
+func TestHandleSysApError(t *testing.T) {
+	tests := []struct {
+		name          string
+		err           error
+		operation     string
+		tlsEnabled    bool
+		skipTLSVerify bool
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "Nil error",
+			err:           nil,
+			operation:     "test operation",
+			tlsEnabled:    true,
+			skipTLSVerify: false,
+			expectError:   false,
+		},
+		{
+			name:          "TLS enabled without skip verify",
+			err:           fmt.Errorf("test error"),
+			operation:     "test operation",
+			tlsEnabled:    true,
+			skipTLSVerify: false,
+			expectError:   true,
+			errorContains: "failed to test operation",
+		},
+		{
+			name:          "TLS enabled with skip verify",
+			err:           fmt.Errorf("test error"),
+			operation:     "test operation",
+			tlsEnabled:    true,
+			skipTLSVerify: true,
+			expectError:   true,
+			errorContains: "failed to test operation",
+		},
+		{
+			name:          "TLS disabled",
+			err:           fmt.Errorf("test error"),
+			operation:     "test operation",
+			tlsEnabled:    false,
+			skipTLSVerify: false,
+			expectError:   true,
+			errorContains: "failed to test operation",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handleSysApError(tt.err, tt.operation, tt.tlsEnabled, tt.skipTLSVerify)
+
+			if tt.expectError {
+				if result == nil {
+					t.Error("Expected error but got nil")
+				} else if tt.errorContains != "" && !strings.Contains(result.Error(), tt.errorContains) {
+					t.Errorf("Expected error to contain '%s', got '%s'", tt.errorContains, result.Error())
+				}
+			} else {
+				if result != nil {
+					t.Errorf("Expected no error but got: %v", result)
+				}
+			}
+		})
+	}
+}
+
+// TestOutputJSON tests the outputJSON function with various scenarios
+func TestOutputJSON(t *testing.T) {
+	tests := []struct {
+		name          string
+		data          interface{}
+		dataType      string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "Valid JSON data",
+			data:        map[string]string{"key": "value"},
+			dataType:    "test data",
+			expectError: false,
+		},
+		{
+			name:        "Complex nested data",
+			data:        map[string]interface{}{"nested": map[string]int{"count": 42}},
+			dataType:    "complex data",
+			expectError: false,
+		},
+		{
+			name:        "Empty data",
+			data:        map[string]interface{}{},
+			dataType:    "empty data",
+			expectError: false,
+		},
+		{
+			name:        "Nil data",
+			data:        nil,
+			dataType:    "nil data",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Capture stdout for output testing
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			defer func() { os.Stdout = oldStdout }()
+
+			// Test outputJSON function
+			err := outputJSON(tt.data, tt.dataType)
+
+			// Close pipe and read output
+			_ = w.Close()
+			output, _ := io.ReadAll(r)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected error but got none")
+				} else if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("Expected error to contain '%s', got '%s'", tt.errorContains, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				// Verify that valid JSON was output
+				if len(output) > 0 {
+					// Try to parse the output as JSON to ensure it's valid
+					var parsed interface{}
+					if jsonErr := json.Unmarshal(output, &parsed); jsonErr != nil {
+						t.Errorf("Output is not valid JSON: %v", jsonErr)
+					}
+				}
+			}
+		})
 	}
 }

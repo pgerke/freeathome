@@ -29,6 +29,14 @@ var (
 		Long:    `Retrieve and display the list of devices from the free@home system access point.`,
 		RunE:    runGetDeviceList,
 	}
+
+	configurationCmd = &cobra.Command{
+		Use:     "configuration",
+		Aliases: []string{"config", "cfg"},
+		Short:   "Get the configuration from the system access point",
+		Long:    `Retrieve and display the configuration from the free@home system access point.`,
+		RunE:    runGetConfiguration,
+	}
 )
 
 func init() {
@@ -36,6 +44,7 @@ func init() {
 
 	// Add subcommands
 	getCmd.AddCommand(devicelistCmd)
+	getCmd.AddCommand(configurationCmd)
 
 	// Add TLS configuration flags
 	getCmd.PersistentFlags().BoolVar(&tlsEnabled, "tls", true, "Enable TLS for connection")
@@ -50,4 +59,8 @@ func init() {
 
 func runGetDeviceList(cmd *cobra.Command, args []string) error {
 	return cli.GetDeviceList(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat)
+}
+
+func runGetConfiguration(cmd *cobra.Command, args []string) error {
+	return cli.GetConfiguration(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat)
 }

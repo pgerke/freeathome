@@ -33,6 +33,29 @@ func parseLogLevel(level string) slog.Level {
 	}
 }
 
+// handleSysApError provides consistent error handling for system access point operations
+func handleSysApError(err error, operation string, tlsEnabled, skipTLSVerify bool) error {
+	if err == nil {
+		return nil
+	}
+
+	// Provide helpful error message for TLS issues
+	if tlsEnabled && !skipTLSVerify {
+		return fmt.Errorf("failed to %s: %w\n\nIf you're getting TLS certificate errors, try:\n  - Using --skip-tls-verify flag\n  - Using --tls=false to use HTTP instead of HTTPS", operation, err)
+	}
+	return fmt.Errorf("failed to %s: %w", operation, err)
+}
+
+// outputJSON provides consistent JSON output formatting for system access point operations
+func outputJSON(data any, dataType string) error {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal %s to JSON: %w", dataType, err)
+	}
+	fmt.Println(string(jsonData))
+	return nil
+}
+
 func setup(v *viper.Viper, configFile string, tlsEnabled, skipTLSVerify bool, logLevel string) (*freeathome.SystemAccessPoint, error) {
 	// Load configuration
 	cfg, err := load(v, configFile)
@@ -82,21 +105,12 @@ func GetDeviceList(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel stri
 	// Get device list
 	deviceList, err := sysAp.GetDeviceList()
 	if err != nil {
-		// Provide helpful error message for TLS issues
-		if tlsEnabled && !skipTLSVerify {
-			return fmt.Errorf("failed to get device list: %w\n\nIf you're getting TLS certificate errors, try:\n  - Using --skip-tls-verify flag\n  - Using --tls=false to use HTTP instead of HTTPS", err)
-		}
-		return fmt.Errorf("failed to get device list: %w", err)
+		return handleSysApError(err, "get device list", tlsEnabled, skipTLSVerify)
 	}
 
 	// Output depending on output format
 	if outputFormat == "json" {
-		jsonData, err := json.Marshal(deviceList)
-		if err != nil {
-			return fmt.Errorf("failed to marshal device list to JSON: %w", err)
-		}
-		fmt.Println(string(jsonData))
-		return nil
+		return outputJSON(deviceList, "device list")
 	}
 
 	// Check if device list is empty
@@ -120,6 +134,44 @@ func GetDeviceList(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel stri
 	// Output as plain text (one device per line)
 	for _, deviceSerial := range devices {
 		fmt.Println(deviceSerial)
+	}
+
+	return nil
+}
+
+// GetConfiguration retrieves and displays the configuration
+func GetConfiguration(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string) error {
+	// Setup system access point
+	sysAp, err := setupFunc(v, "", tlsEnabled, skipTLSVerify, logLevel)
+	if err != nil {
+		return err
+	}
+
+	// Get configuration
+	configuration, err := sysAp.GetConfiguration()
+	if err != nil {
+		return handleSysApError(err, "get configuration", tlsEnabled, skipTLSVerify)
+	}
+
+	// Output depending on output format
+	if outputFormat == "json" {
+		return outputJSON(configuration, "configuration")
+	}
+
+	// Check if configuration is empty
+	if configuration == nil || len(*configuration) == 0 {
+		fmt.Println("No configuration found")
+		return nil
+	}
+
+	// Output as plain text (one system access point per line)
+	for sysApID, sysAp := range *configuration {
+		fmt.Printf("System Access Point ID: %s\n", sysApID)
+		fmt.Printf("  Name: %s\n", sysAp.SysApName)
+		fmt.Printf("  Devices: %d\n", len(sysAp.Devices))
+		fmt.Printf("  Users: %d\n", len(sysAp.Users))
+		fmt.Printf("  Floors: %d\n", len(sysAp.Floorplan.Floors))
+		fmt.Println()
 	}
 
 	return nil

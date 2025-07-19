@@ -120,7 +120,7 @@ func TestGetCommandFlagDefaults(t *testing.T) {
 
 // TestGetCommandSubcommands tests that the get command has the expected subcommands.
 func TestGetCommandSubcommands(t *testing.T) {
-	expectedSubcommands := []string{"devicelist"}
+	expectedSubcommands := []string{"devicelist", "configuration"}
 
 	for _, expected := range expectedSubcommands {
 		found := slices.ContainsFunc(getCmd.Commands(), func(cmd *cobra.Command) bool {
@@ -130,4 +130,55 @@ func TestGetCommandSubcommands(t *testing.T) {
 			t.Errorf("Expected get command to have subcommand '%s'", expected)
 		}
 	}
+}
+
+// TestConfigurationCommand tests that the configuration command has the expected properties.
+func TestConfigurationCommand(t *testing.T) {
+	if configurationCmd.Use != "configuration" {
+		t.Errorf("Expected configuration command Use to be 'configuration', got '%s'", configurationCmd.Use)
+	}
+
+	if configurationCmd.Short == "" {
+		t.Error("Expected configuration command to have a Short description")
+	}
+
+	if configurationCmd.Long == "" {
+		t.Error("Expected configuration command to have a Long description")
+	}
+}
+
+// TestConfigurationCommandAliases tests that the configuration command has the expected aliases.
+func TestConfigurationCommandAliases(t *testing.T) {
+	expectedAliases := []string{"config", "cfg"}
+
+	for _, expected := range expectedAliases {
+		found := slices.ContainsFunc(configurationCmd.Aliases, func(alias string) bool {
+			return alias == expected
+		})
+		if !found {
+			t.Errorf("Expected configuration command to have alias '%s'", expected)
+		}
+	}
+}
+
+// TestConfigurationCommandIsChildOfGet tests that the configuration command is properly added to the get command.
+func TestConfigurationCommandIsChildOfGet(t *testing.T) {
+	found := slices.ContainsFunc(getCmd.Commands(), func(cmd *cobra.Command) bool {
+		return cmd.Name() == "configuration"
+	})
+	if !found {
+		t.Error("Expected configuration command to be a child of get command")
+	}
+}
+
+// TestRunGetConfigurationFunction tests that the runGetConfiguration function exists and can be called.
+func TestRunGetConfigurationFunction(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("runGetConfiguration() panicked: %v", r)
+		}
+	}()
+
+	// This will likely fail since we're not providing proper args, but we're testing it doesn't panic
+	_ = runGetConfiguration(nil, []string{})
 }
