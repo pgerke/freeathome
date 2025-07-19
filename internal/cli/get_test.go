@@ -693,11 +693,257 @@ func TestHandleSysApError(t *testing.T) {
 	}
 }
 
+// TestGetDevice tests the GetDevice function with various inputs
+func TestGetDevice(t *testing.T) {
+	tests := []struct {
+		name          string
+		serial        string
+		outputFormat  string
+		responseBody  string
+		responseCode  int
+		expectError   bool
+		errorContains string
+		expectOutput  string
+	}{
+		{
+			name:         "Successful JSON output",
+			serial:       "ABB7F595EC47",
+			outputFormat: "json",
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "devices": {
+      "ABB7F595EC47": {
+        "displayName": "Living Room Light",
+        "room": "Living Room",
+        "floor": "Ground Floor",
+        "interface": "KNX",
+        "nativeId": "1.1.1",
+        "channels": {
+          "ch0000": {
+            "name": "Light Control"
+          }
+        },
+        "parameters": {
+          "param1": "value1"
+        }
+      }
+    }
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: `{"00000000-0000-0000-0000-000000000000":{"devices":{"ABB7F595EC47":{"displayName":"Living Room Light","room":"Living Room","floor":"Ground Floor","interface":"KNX","nativeId":"1.1.1","channels":{"ch0000":{}},"parameters":{"param1":"value1"}}}}}
+`,
+		},
+		{
+			name:         "Successful text output",
+			serial:       "ABB7F595EC47",
+			outputFormat: "text",
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "devices": {
+      "ABB7F595EC47": {
+        "displayName": "Living Room Light",
+        "room": "Living Room",
+        "floor": "Ground Floor",
+        "interface": "KNX",
+        "nativeId": "1.1.1",
+        "channels": {
+          "ch0000": {
+            "name": "Light Control"
+          }
+        },
+        "parameters": {
+          "param1": "value1"
+        }
+      }
+    }
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "Device Serial: ABB7F595EC47\n  Display Name: Living Room Light\n  Room: Living Room\n  Floor: Ground Floor\n  Interface: KNX\n  Native ID: 1.1.1\n  Channels: 1\n  Parameters: 1\n",
+		},
+		{
+			name:         "Device with minimal fields",
+			serial:       "ABB7F595EC47",
+			outputFormat: "text",
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "devices": {
+      "ABB7F595EC47": {
+        "displayName": "Simple Device"
+      }
+    }
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "Device Serial: ABB7F595EC47\n  Display Name: Simple Device\n",
+		},
+		{
+			name:         "Empty device response",
+			serial:       "ABB7F595EC47",
+			outputFormat: "text",
+			responseBody: `{}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "No device found with serial: ABB7F595EC47\n",
+		},
+		{
+			name:         "No devices for EmptyUUID",
+			serial:       "ABB7F595EC47",
+			outputFormat: "text",
+			responseBody: `{
+  "other-uuid": {
+    "devices": {
+      "ABB7F595EC47": {
+        "displayName": "Living Room Light"
+      }
+    }
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "No device found with serial: ABB7F595EC47\n",
+		},
+		{
+			name:         "Device not found in devices map",
+			serial:       "ABB7F595EC47",
+			outputFormat: "text",
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "devices": {
+      "OTHER_DEVICE": {
+        "displayName": "Other Device"
+      }
+    }
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "No device found with serial: ABB7F595EC47\n",
+		},
+		{
+			name:          "HTTP error response",
+			serial:        "ABB7F595EC47",
+			outputFormat:  "text",
+			responseBody:  `{"error": "Unauthorized"}`,
+			responseCode:  http.StatusUnauthorized,
+			expectError:   true,
+			errorContains: "failed to get device",
+		},
+		{
+			name:          "Invalid JSON response",
+			serial:        "ABB7F595EC47",
+			outputFormat:  "text",
+			responseBody:  `invalid json`,
+			responseCode:  http.StatusOK,
+			expectError:   true,
+			errorContains: "failed to get device",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create viper instance
+			v := setupViper(t)
+
+			// Setup mock SystemAccessPoint
+			sysAp, _, _ := setupMock(t, v, tt.responseCode, tt.responseBody)
+
+			// Override the setupFunc to use the mock SystemAccessPoint
+			setupFunc = func(_ *viper.Viper, _ string, _ bool, _ bool, _ string) (*freeathome.SystemAccessPoint, error) {
+				return sysAp, nil
+			}
+			defer func() {
+				setupFunc = setup
+			}()
+
+			// Capture stdout for output testing
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			defer func() { os.Stdout = oldStdout }()
+
+			// Test GetDevice function
+			err := GetDevice(v, false, false, "info", tt.outputFormat, tt.serial)
+
+			// Close pipe and read output
+			_ = w.Close()
+			output, _ := io.ReadAll(r)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected error but got none")
+				} else if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("Expected error to contain '%s', got '%s'", tt.errorContains, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				if tt.expectOutput != "" && string(output) != tt.expectOutput {
+					t.Errorf("Expected output '%s', got '%s'", tt.expectOutput, string(output))
+				}
+			}
+		})
+	}
+}
+
+// TestGetDeviceWithInvalidConfigFile tests GetDevice with an invalid config file
+func TestGetDeviceWithInvalidConfigFile(t *testing.T) {
+	// Create a temporary config file with invalid YAML
+	configFile := filepath.Join(t.TempDir(), "invalid-config.yaml")
+
+	invalidYAML := `hostname: test-host
+username: [invalid array]
+password: test-pass`
+
+	err := os.WriteFile(configFile, []byte(invalidYAML), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test config file: %v", err)
+	}
+
+	// Create a fresh viper instance for testing
+	v := viper.New()
+
+	// Test GetDevice function - should fail due to invalid YAML
+	err = GetDevice(v, true, false, "info", "text", "ABB7F595EC47")
+	if err == nil {
+		t.Error("Expected error when loading invalid config file, got none")
+	}
+}
+
+// TestGetDeviceWithNilViper tests GetDevice with nil viper instance
+func TestGetDeviceWithNilViper(t *testing.T) {
+	// Test GetDevice function with nil viper
+	err := GetDevice(nil, true, false, "info", "text", "ABB7F595EC47")
+	if err == nil {
+		t.Error("Expected error with nil viper, got none")
+	}
+}
+
+// TestGetDeviceFunctionExists tests that the GetDevice function exists and can be called
+func TestGetDeviceFunctionExists(t *testing.T) {
+	// Create viper instance
+	v := setupViper(t)
+
+	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
+	err := GetDevice(v, true, false, "info", "text", "ABB7F595EC47")
+	// We expect this to fail due to network/connection issues, but the function should exist
+	if err == nil {
+		t.Log("GetDevice function exists and was called successfully")
+	} else {
+		t.Logf("GetDevice function exists but failed as expected: %v", err)
+	}
+}
+
 // TestOutputJSON tests the outputJSON function with various scenarios
 func TestOutputJSON(t *testing.T) {
 	tests := []struct {
 		name          string
-		data          interface{}
+		data          any
 		dataType      string
 		expectError   bool
 		errorContains string
@@ -710,13 +956,13 @@ func TestOutputJSON(t *testing.T) {
 		},
 		{
 			name:        "Complex nested data",
-			data:        map[string]interface{}{"nested": map[string]int{"count": 42}},
+			data:        map[string]any{"nested": map[string]int{"count": 42}},
 			dataType:    "complex data",
 			expectError: false,
 		},
 		{
 			name:        "Empty data",
-			data:        map[string]interface{}{},
+			data:        map[string]any{},
 			dataType:    "empty data",
 			expectError: false,
 		},
@@ -756,7 +1002,7 @@ func TestOutputJSON(t *testing.T) {
 				// Verify that valid JSON was output
 				if len(output) > 0 {
 					// Try to parse the output as JSON to ensure it's valid
-					var parsed interface{}
+					var parsed any
 					if jsonErr := json.Unmarshal(output, &parsed); jsonErr != nil {
 						t.Errorf("Output is not valid JSON: %v", jsonErr)
 					}

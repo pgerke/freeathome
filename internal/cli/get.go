@@ -176,3 +176,69 @@ func GetConfiguration(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel s
 
 	return nil
 }
+
+// GetDevice retrieves and displays a specific device by serial number
+func GetDevice(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string, serial string) error {
+	// Setup system access point
+	sysAp, err := setupFunc(v, "", tlsEnabled, skipTLSVerify, logLevel)
+	if err != nil {
+		return err
+	}
+
+	// Get device
+	device, err := sysAp.GetDevice(serial)
+	if err != nil {
+		return handleSysApError(err, "get device", tlsEnabled, skipTLSVerify)
+	}
+
+	// Output depending on output format
+	if outputFormat == "json" {
+		return outputJSON(device, "device")
+	}
+
+	// Check if device is empty
+	if device == nil || len(*device) == 0 {
+		fmt.Printf("No device found with serial: %s\n", serial)
+		return nil
+	}
+
+	// Get devices for the system access point (using EmptyUUID as key)
+	devices, exists := (*device)[models.EmptyUUID]
+	if !exists {
+		fmt.Printf("No device found with serial: %s\n", serial)
+		return nil
+	}
+
+	// Check if the specific device exists
+	deviceData, deviceExists := devices.Devices[serial]
+	if !deviceExists {
+		fmt.Printf("No device found with serial: %s\n", serial)
+		return nil
+	}
+
+	// Output as plain text
+	fmt.Printf("Device Serial: %s\n", serial)
+	if deviceData.DisplayName != nil {
+		fmt.Printf("  Display Name: %s\n", *deviceData.DisplayName)
+	}
+	if deviceData.Room != nil {
+		fmt.Printf("  Room: %s\n", *deviceData.Room)
+	}
+	if deviceData.Floor != nil {
+		fmt.Printf("  Floor: %s\n", *deviceData.Floor)
+	}
+	if deviceData.Interface != nil {
+		fmt.Printf("  Interface: %s\n", *deviceData.Interface)
+	}
+	if deviceData.NativeID != nil {
+		fmt.Printf("  Native ID: %s\n", *deviceData.NativeID)
+	}
+	if deviceData.Channels != nil {
+		fmt.Printf("  Channels: %d\n", len(*deviceData.Channels))
+	}
+	if deviceData.Parameters != nil {
+		fmt.Printf("  Parameters: %d\n", len(*deviceData.Parameters))
+	}
+
+	return nil
+}

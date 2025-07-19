@@ -120,7 +120,7 @@ func TestGetCommandFlagDefaults(t *testing.T) {
 
 // TestGetCommandSubcommands tests that the get command has the expected subcommands.
 func TestGetCommandSubcommands(t *testing.T) {
-	expectedSubcommands := []string{"devicelist", "configuration"}
+	expectedSubcommands := []string{"devicelist", "configuration", "device"}
 
 	for _, expected := range expectedSubcommands {
 		found := slices.ContainsFunc(getCmd.Commands(), func(cmd *cobra.Command) bool {
@@ -181,4 +181,41 @@ func TestRunGetConfigurationFunction(t *testing.T) {
 
 	// This will likely fail since we're not providing proper args, but we're testing it doesn't panic
 	_ = runGetConfiguration(nil, []string{})
+}
+
+// TestDeviceCommand tests that the device command has the expected properties.
+func TestDeviceCommand(t *testing.T) {
+	if deviceCmd.Use != "device [serial]" {
+		t.Errorf("Expected device command Use to be 'device [serial]', got '%s'", deviceCmd.Use)
+	}
+
+	if deviceCmd.Short == "" {
+		t.Error("Expected device command to have a Short description")
+	}
+
+	if deviceCmd.Long == "" {
+		t.Error("Expected device command to have a Long description")
+	}
+}
+
+// TestDeviceCommandIsChildOfGet tests that the device command is properly added to the get command.
+func TestDeviceCommandIsChildOfGet(t *testing.T) {
+	found := slices.ContainsFunc(getCmd.Commands(), func(cmd *cobra.Command) bool {
+		return cmd.Name() == "device"
+	})
+	if !found {
+		t.Error("Expected device command to be a child of get command")
+	}
+}
+
+// TestRunGetDeviceFunction tests that the runGetDevice function exists and can be called.
+func TestRunGetDeviceFunction(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("runGetDevice() panicked: %v", r)
+		}
+	}()
+
+	// This will likely fail since we're not providing proper args, but we're testing it doesn't panic
+	_ = runGetDevice(nil, []string{"test-serial"})
 }
