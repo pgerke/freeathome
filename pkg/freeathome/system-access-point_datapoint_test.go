@@ -22,7 +22,7 @@ func TestSystemAccessPointGetDatapoint(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDatapoint("abcd1234", "ch0000", "odp0001")
 
@@ -68,7 +68,7 @@ func TestSystemAccessPointGetDatapointCallError(t *testing.T) {
 		Response: nil,
 		Err:      error,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDatapoint("abcd1234", "ch0000", "odp0001")
 
@@ -107,7 +107,7 @@ func TestSystemAccessPointGetDatapointErrorResponse(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDatapoint("abcd1234", "ch0000", "odp0001")
 
@@ -155,7 +155,7 @@ func TestSystemAccessPointGetDatapointUnmarshalError(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDatapoint("abcd1234", "ch0000", "odp0001")
 
@@ -193,7 +193,7 @@ func TestSystemAccessPointSetDatapoint(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetDatapoint("abcd1234", "ch0000", "idp0001", "123")
 
@@ -240,7 +240,7 @@ func TestSystemAccessPointSetDatapointCallError(t *testing.T) {
 		Response: nil,
 		Err:      error,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetDatapoint("abcd1234", "ch0000", "idp0001", "123")
 
@@ -279,7 +279,7 @@ func TestSystemAccessPointSetDatapointErrorResponse(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetDatapoint("abcd1234", "ch0000", "idp0001", "123")
 
@@ -327,7 +327,7 @@ func TestSystemAccessPointSetDatapointUnmarshalError(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetDatapoint("abcd1234", "ch0000", "idp0001", "123")
 

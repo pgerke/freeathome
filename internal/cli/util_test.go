@@ -70,7 +70,11 @@ func setupMock(t *testing.T, v *viper.Viper, responseCode int, responseBody stri
 	logger := freeathome.NewDefaultLogger(handler)
 
 	// Create SystemAccessPoint with mock client
-	sysAp := freeathome.NewSystemAccessPoint(v.GetString("hostname"), v.GetString("username"), v.GetString("password"), true, false, false, logger, client)
+	config := freeathome.NewConfig(v.GetString("hostname"), v.GetString("username"), v.GetString("password"))
+	config.TLSEnabled = true
+	config.Logger = logger
+	config.Client = client
+	sysAp := freeathome.NewSystemAccessPoint(config)
 
 	return sysAp, nil, nil
 }

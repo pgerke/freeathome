@@ -34,7 +34,11 @@ func setup(t *testing.T, tlsEnabled bool, skipTLSVerify bool) (*SystemAccessPoin
 	logger := NewDefaultLogger(channelHandler)
 
 	// Create a SystemAccessPoint with the default logger
-	return NewSystemAccessPoint("localhost", "user", "password", tlsEnabled, skipTLSVerify, false, logger, nil), &buf, channelHandler.records
+	config := NewConfig("localhost", "user", "password")
+	config.TLSEnabled = tlsEnabled
+	config.SkipTLSVerify = skipTLSVerify
+	config.Logger = logger
+	return NewSystemAccessPoint(config), &buf, channelHandler.records
 }
 
 // MockRoundTripper is a mock implementation of http.RoundTripper for testing purposes.

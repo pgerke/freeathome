@@ -22,7 +22,7 @@ func TestSystemAccessPointTriggerProxyDevice(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.TriggerProxyDevice("doorring", "600028E1ED13", "shortpress")
 
@@ -68,7 +68,7 @@ func TestSystemAccessPointTriggerProxyDeviceCallError(t *testing.T) {
 		Response: nil,
 		Err:      error,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.TriggerProxyDevice("doorring", "600028E1ED13", "shortpress")
 
@@ -107,7 +107,7 @@ func TestSystemAccessPointTriggerProxyDeviceErrorResponse(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.TriggerProxyDevice("doorring", "600028E1ED13", "shortpress")
 
@@ -155,7 +155,7 @@ func TestSystemAccessPointTriggerProxyDeviceUnmarshalError(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.TriggerProxyDevice("doorring", "600028E1ED13", "shortpress")
 
@@ -193,7 +193,7 @@ func TestSystemAccessPointSetProxyDeviceValue(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetProxyDeviceValue("doorring", "600028E1ED13", "123")
 
@@ -238,7 +238,7 @@ func TestSystemAccessPointSetProxyDeviceValueCallError(t *testing.T) {
 		Response: nil,
 		Err:      error,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetProxyDeviceValue("doorring", "600028E1ED13", "123")
 
@@ -277,7 +277,7 @@ func TestSystemAccessPointSetProxyDeviceValueErrorResponse(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetProxyDeviceValue("doorring", "600028E1ED13", "123")
 
@@ -325,7 +325,7 @@ func TestSystemAccessPointSetProxyDeviceValueUnmarshalError(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetProxyDeviceValue("doorring", "600028E1ED13", "123")
 

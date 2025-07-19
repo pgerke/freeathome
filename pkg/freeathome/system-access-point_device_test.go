@@ -22,7 +22,7 @@ func TestSystemAccessPointGetDevice(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDevice("600028E1ED13")
 
@@ -68,7 +68,7 @@ func TestSystemAccessPointGetDeviceCallError(t *testing.T) {
 		Response: nil,
 		Err:      error,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDevice("600028E1ED13")
 
@@ -107,7 +107,7 @@ func TestSystemAccessPointGetDeviceErrorResponse(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDevice("600028E1ED13")
 
@@ -155,7 +155,7 @@ func TestSystemAccessPointGetDeviceUnmarshalError(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDevice("600028E1ED13")
 

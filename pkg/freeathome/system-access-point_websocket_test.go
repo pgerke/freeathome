@@ -136,7 +136,7 @@ func TestSystemAccessPointConnectWebSocketSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	sysAp.hostName = strings.TrimPrefix(server.URL, "http://")
+	sysAp.config.Hostname = strings.TrimPrefix(server.URL, "http://")
 
 	// Wait for the expected record in a separate goroutine
 	go func() {
@@ -180,7 +180,7 @@ func TestSystemAccessPointConnectWebSocketSkipTlsVerify(t *testing.T) {
 	}))
 	defer server.Close()
 
-	sysAp.hostName = strings.TrimPrefix(server.URL, "https://")
+	sysAp.config.Hostname = strings.TrimPrefix(server.URL, "https://")
 
 	// Wait for the expected record in a separate goroutine
 	go func() {
@@ -228,7 +228,7 @@ func TestSystemAccessPointConnectWebSocketContextCancelled(t *testing.T) {
 	}))
 	defer server.Close()
 
-	sysAp.hostName = strings.TrimPrefix(server.URL, "http://")
+	sysAp.config.Hostname = strings.TrimPrefix(server.URL, "http://")
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -279,7 +279,7 @@ func TestSystemAccessPointConnectWebSocketFailure(t *testing.T) {
 	defer sysAp.waitGroup.Wait()
 
 	// Set an invalid host name to simulate connection failure
-	sysAp.hostName = "invalid-host"
+	sysAp.config.Hostname = "invalid-host"
 
 	// set up the error handler
 	sysAp.onError = func(err error) {

@@ -15,13 +15,24 @@ func TestSystemAccessPointDefaultLogger(t *testing.T) {
 	slog.SetDefault(slog.New(handler))
 
 	// Create a SystemAccessPoint with the default logger
-	NewSystemAccessPoint("localhost", "user", "password", false, false, false, nil, nil)
+	NewSystemAccessPointWithDefaults("localhost", "user", "password")
 
 	// Check if the log output contains the expected message
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, "No logger provided for SystemAccessPoint. Using default logger.") {
 		t.Errorf("Expected log output to contain 'No logger provided for SystemAccessPoint. Using default logger.', got: %s", logOutput)
 	}
+}
+
+// TestNoConfigPanics tests that a panic occurs when a nil config is passed to NewSystemAccessPoint.
+func TestNoConfigPanics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Expected panic, got nil")
+		}
+	}()
+
+	NewSystemAccessPoint(nil)
 }
 
 // TestSystemAccessPointGetHostName tests the GetHostName method of SystemAccessPoint.

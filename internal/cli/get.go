@@ -62,7 +62,11 @@ func setup(v *viper.Viper, configFile string, tlsEnabled, skipTLSVerify bool, lo
 	logger := freeathome.NewDefaultLogger(handler)
 
 	// Create system access point client
-	sysAp := freeathome.NewSystemAccessPoint(cfg.Hostname, cfg.Username, cfg.Password, tlsEnabled, skipTLSVerify, false, logger, nil)
+	config := freeathome.NewConfig(cfg.Hostname, cfg.Username, cfg.Password)
+	config.TLSEnabled = tlsEnabled
+	config.SkipTLSVerify = skipTLSVerify
+	config.Logger = logger
+	sysAp := freeathome.NewSystemAccessPoint(config)
 
 	return sysAp, nil
 }

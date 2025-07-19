@@ -22,7 +22,7 @@ func TestSystemAccessPointGetDeviceList(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDeviceList()
 
@@ -66,7 +66,7 @@ func TestSystemAccessPointGetDeviceListCallError(t *testing.T) {
 		Response: nil,
 		Err:      error,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDeviceList()
 
@@ -104,7 +104,7 @@ func TestSystemAccessPointGetDeviceListErrorResponse(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDeviceList()
 
@@ -154,7 +154,7 @@ func TestSystemAccessPointGetDeviceListUnmarshalError(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDeviceList()
 

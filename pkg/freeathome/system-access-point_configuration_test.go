@@ -22,7 +22,7 @@ func TestSystemAccessPointGetConfiguration(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetConfiguration()
 
@@ -66,7 +66,7 @@ func TestSystemAccessPointGetConfigurationCallError(t *testing.T) {
 		Response: nil,
 		Err:      error,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetConfiguration()
 
@@ -104,7 +104,7 @@ func TestSystemAccessPointGetConfigurationErrorResponse(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetConfiguration()
 
@@ -154,7 +154,7 @@ func TestSystemAccessPointGetConfigurationUnmarshalError(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetConfiguration()
 

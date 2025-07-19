@@ -36,7 +36,7 @@ func TestSystemAccessPointCreateVirtualDevice(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	device := newVirtualDevice(t)
 	result, err := sysAp.CreateVirtualDevice("6000D2CB27B2", device)
@@ -83,7 +83,7 @@ func TestSystemAccessPointCreateVirtualDeviceCallError(t *testing.T) {
 		Response: nil,
 		Err:      error,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	device := newVirtualDevice(t)
 	result, err := sysAp.CreateVirtualDevice("6000D2CB27B2", device)
@@ -123,7 +123,7 @@ func TestSystemAccessPointCreateVirtualDeviceErrorResponse(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	device := newVirtualDevice(t)
 	result, err := sysAp.CreateVirtualDevice("6000D2CB27B2", device)
@@ -172,7 +172,7 @@ func TestSystemAccessPointCreateVirtualDeviceUnmarshalError(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	device := newVirtualDevice(t)
 	result, err := sysAp.CreateVirtualDevice("6000D2CB27B2", device)
