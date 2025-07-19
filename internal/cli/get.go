@@ -16,6 +16,16 @@ import (
 
 var setupFunc = setup
 
+// GetCommandConfig is a struct that contains the configuration for the get command
+type GetCommandConfig struct {
+	Viper         *viper.Viper
+	TLSEnabled    bool
+	SkipTLSVerify bool
+	LogLevel      string
+	OutputFormat  string
+	Prettify      bool
+}
+
 // parseLogLevel converts a string log level to slog.Level
 func parseLogLevel(level string) slog.Level {
 	switch strings.ToLower(level) {
@@ -64,9 +74,9 @@ func outputJSON(data any, dataType string, prettify bool) error {
 	return nil
 }
 
-func setup(v *viper.Viper, configFile string, tlsEnabled, skipTLSVerify bool, logLevel string) (*freeathome.SystemAccessPoint, error) {
+func setup(config GetCommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
 	// Load configuration
-	cfg, err := load(v, configFile)
+	cfg, err := load(config.Viper, configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -88,24 +98,24 @@ func setup(v *viper.Viper, configFile string, tlsEnabled, skipTLSVerify bool, lo
 		color.NoColor = true
 	}
 	handler := freeathome.NewColorHandler(os.Stderr, &slog.HandlerOptions{
-		Level: parseLogLevel(logLevel),
+		Level: parseLogLevel(config.LogLevel),
 	})
 	logger := freeathome.NewDefaultLogger(handler)
 
 	// Create system access point client
-	config := freeathome.NewConfig(cfg.Hostname, cfg.Username, cfg.Password)
-	config.TLSEnabled = tlsEnabled
-	config.SkipTLSVerify = skipTLSVerify
-	config.Logger = logger
-	sysAp := freeathome.NewSystemAccessPoint(config)
+	sysApConfig := freeathome.NewConfig(cfg.Hostname, cfg.Username, cfg.Password)
+	sysApConfig.TLSEnabled = config.TLSEnabled
+	sysApConfig.SkipTLSVerify = config.SkipTLSVerify
+	sysApConfig.Logger = logger
+	sysAp := freeathome.NewSystemAccessPoint(sysApConfig)
 
 	return sysAp, nil
 }
 
 // GetDeviceList retrieves and displays the device list
-func GetDeviceList(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string, prettify bool) error {
+func GetDeviceList(config GetCommandConfig) error {
 	// Setup system access point
-	sysAp, err := setupFunc(v, "", tlsEnabled, skipTLSVerify, logLevel)
+	sysAp, err := setupFunc(config, "")
 	if err != nil {
 		return err
 	}
@@ -113,12 +123,12 @@ func GetDeviceList(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel stri
 	// Get device list
 	deviceList, err := sysAp.GetDeviceList()
 	if err != nil {
-		return handleSysApError(err, "get device list", tlsEnabled, skipTLSVerify)
+		return handleSysApError(err, "get device list", config.TLSEnabled, config.SkipTLSVerify)
 	}
 
 	// Output depending on output format
-	if outputFormat == "json" {
-		return outputJSON(deviceList, "device list", prettify)
+	if config.OutputFormat == "json" {
+		return outputJSON(deviceList, "device list", config.Prettify)
 	}
 
 	// Check if device list is empty
@@ -148,9 +158,9 @@ func GetDeviceList(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel stri
 }
 
 // GetConfiguration retrieves and displays the configuration
-func GetConfiguration(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string, prettify bool) error {
+func GetConfiguration(config GetCommandConfig) error {
 	// Setup system access point
-	sysAp, err := setupFunc(v, "", tlsEnabled, skipTLSVerify, logLevel)
+	sysAp, err := setupFunc(config, "")
 	if err != nil {
 		return err
 	}
@@ -158,12 +168,12 @@ func GetConfiguration(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel s
 	// Get configuration
 	configuration, err := sysAp.GetConfiguration()
 	if err != nil {
-		return handleSysApError(err, "get configuration", tlsEnabled, skipTLSVerify)
+		return handleSysApError(err, "get configuration", config.TLSEnabled, config.SkipTLSVerify)
 	}
 
 	// Output depending on output format
-	if outputFormat == "json" {
-		return outputJSON(configuration, "configuration", prettify)
+	if config.OutputFormat == "json" {
+		return outputJSON(configuration, "configuration", config.Prettify)
 	}
 
 	// Check if configuration is empty
@@ -186,9 +196,9 @@ func GetConfiguration(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel s
 }
 
 // GetDevice retrieves and displays a specific device by serial number
-func GetDevice(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string, prettify bool, serial string) error {
+func GetDevice(config GetCommandConfig, serial string) error {
 	// Setup system access point
-	sysAp, err := setupFunc(v, "", tlsEnabled, skipTLSVerify, logLevel)
+	sysAp, err := setupFunc(config, "")
 	if err != nil {
 		return err
 	}
@@ -196,31 +206,32 @@ func GetDevice(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, 
 	// Get device
 	device, err := sysAp.GetDevice(serial)
 	if err != nil {
-		return handleSysApError(err, "get device", tlsEnabled, skipTLSVerify)
+		return handleSysApError(err, "get device", config.TLSEnabled, config.SkipTLSVerify)
 	}
 
 	// Output depending on output format
-	if outputFormat == "json" {
-		return outputJSON(device, "device", prettify)
+	if config.OutputFormat == "json" {
+		return outputJSON(device, "device", config.Prettify)
 	}
 
 	// Check if device is empty
+	var deviceNotFound = fmt.Sprintf("No device found with serial: %s", serial)
 	if device == nil || len(*device) == 0 {
-		fmt.Printf("No device found with serial: %s\n", serial)
+		fmt.Println(deviceNotFound)
 		return nil
 	}
 
 	// Get devices for the system access point (using EmptyUUID as key)
 	devices, exists := (*device)[models.EmptyUUID]
 	if !exists {
-		fmt.Printf("No device found with serial: %s\n", serial)
+		fmt.Println(deviceNotFound)
 		return nil
 	}
 
 	// Check if the specific device exists
 	deviceData, deviceExists := devices.Devices[serial]
 	if !deviceExists {
-		fmt.Printf("No device found with serial: %s\n", serial)
+		fmt.Println(deviceNotFound)
 		return nil
 	}
 
@@ -252,9 +263,9 @@ func GetDevice(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, 
 }
 
 // GetDatapoint retrieves and displays a specific datapoint
-func GetDatapoint(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string, prettify bool, serial string, channel string, datapoint string) error {
+func GetDatapoint(config GetCommandConfig, serial string, channel string, datapoint string) error {
 	// Setup system access point
-	sysAp, err := setupFunc(v, "", tlsEnabled, skipTLSVerify, logLevel)
+	sysAp, err := setupFunc(config, "")
 	if err != nil {
 		return err
 	}
@@ -262,12 +273,12 @@ func GetDatapoint(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel strin
 	// Get datapoint
 	datapointResponse, err := sysAp.GetDatapoint(serial, channel, datapoint)
 	if err != nil {
-		return handleSysApError(err, "get datapoint", tlsEnabled, skipTLSVerify)
+		return handleSysApError(err, "get datapoint", config.TLSEnabled, config.SkipTLSVerify)
 	}
 
 	// Output depending on output format
-	if outputFormat == "json" {
-		return outputJSON(datapointResponse, "datapoint", prettify)
+	if config.OutputFormat == "json" {
+		return outputJSON(datapointResponse, "datapoint", config.Prettify)
 	}
 
 	// Check if datapoint response is empty

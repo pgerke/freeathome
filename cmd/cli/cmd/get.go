@@ -83,17 +83,45 @@ func init() {
 }
 
 func runGetDeviceList(cmd *cobra.Command, args []string) error {
-	return cli.GetDeviceList(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat, prettify)
+	return cli.GetDeviceList(cli.GetCommandConfig{
+		Viper:         viper.GetViper(),
+		TLSEnabled:    tlsEnabled,
+		SkipTLSVerify: skipTLSVerify,
+		LogLevel:      logLevel,
+		OutputFormat:  outputFormat,
+		Prettify:      prettify,
+	})
 }
 
 func runGetConfiguration(cmd *cobra.Command, args []string) error {
-	return cli.GetConfiguration(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat, prettify)
+	return cli.GetConfiguration(cli.GetCommandConfig{
+		Viper:         viper.GetViper(),
+		TLSEnabled:    tlsEnabled,
+		SkipTLSVerify: skipTLSVerify,
+		LogLevel:      logLevel,
+		OutputFormat:  outputFormat,
+		Prettify:      prettify,
+	})
 }
 
 func runGetDevice(cmd *cobra.Command, args []string) error {
-	return cli.GetDevice(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat, prettify, args[0])
+	return cli.GetDevice(cli.GetCommandConfig{
+		Viper:         viper.GetViper(),
+		TLSEnabled:    tlsEnabled,
+		SkipTLSVerify: skipTLSVerify,
+		LogLevel:      logLevel,
+		OutputFormat:  outputFormat,
+		Prettify:      prettify,
+	}, args[0])
 }
 
 func runGetDatapoint(cmd *cobra.Command, args []string) error {
-	return cli.GetDatapoint(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat, prettify, args[0], args[1], args[2])
+	return cli.GetDatapoint(cli.GetCommandConfig{
+		Viper:         viper.GetViper(),
+		TLSEnabled:    tlsEnabled,
+		SkipTLSVerify: skipTLSVerify,
+		LogLevel:      logLevel,
+		OutputFormat:  outputFormat,
+		Prettify:      prettify,
+	}, args[0], args[1], args[2])
 }
