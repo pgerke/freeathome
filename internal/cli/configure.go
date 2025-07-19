@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+var scanFunc = fmt.Scanln
+
 // Configure handles the configuration process
 func Configure(v *viper.Viper, configFile, hostname, username, password string, nonInteractive bool) error {
 	// Load current configuration
@@ -109,7 +111,7 @@ func promptForField(displayName, currentValue string, maskValue bool, setter fun
 		fmt.Printf("%s: ", displayName)
 	}
 
-	_, err := fmt.Scanln(&newValue)
+	_, err := scanFunc(&newValue)
 	if err != nil {
 		// Handle the case where user just presses Enter (empty input)
 		if err.Error() == "unexpected newline" {
