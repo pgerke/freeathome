@@ -244,6 +244,7 @@ func TestGetDeviceList(t *testing.T) {
 	tests := []struct {
 		name          string
 		outputFormat  string
+		prettify      bool
 		responseBody  string
 		responseCode  int
 		expectError   bool
@@ -253,6 +254,7 @@ func TestGetDeviceList(t *testing.T) {
 		{
 			name:         "Successful JSON output",
 			outputFormat: "json",
+			prettify:     false,
 			responseBody: `{
   "00000000-0000-0000-0000-000000000000": [
     "ABB7F595EC47",
@@ -265,8 +267,30 @@ func TestGetDeviceList(t *testing.T) {
 `,
 		},
 		{
+			name:         "Successful JSON output with prettify",
+			outputFormat: "json",
+			prettify:     true,
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": [
+    "ABB7F595EC47",
+    "ABB7013B85DE",
+    "ABB7F5947E20"
+  ]}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: `{
+  "00000000-0000-0000-0000-000000000000": [
+    "ABB7F595EC47",
+    "ABB7013B85DE",
+    "ABB7F5947E20"
+  ]
+}
+`,
+		},
+		{
 			name:         "Successful text output",
 			outputFormat: "text",
+			prettify:     false,
 			responseBody: `{
   "00000000-0000-0000-0000-000000000000": [
     "ABB7F595EC47",
@@ -280,6 +304,7 @@ func TestGetDeviceList(t *testing.T) {
 		{
 			name:         "Empty device list",
 			outputFormat: "text",
+			prettify:     false,
 			responseBody: `{}`,
 			responseCode: http.StatusOK,
 			expectError:  false,
@@ -288,6 +313,7 @@ func TestGetDeviceList(t *testing.T) {
 		{
 			name:         "Empty devices for EmptyUUID",
 			outputFormat: "text",
+			prettify:     false,
 			responseBody: `{
   "00000000-0000-0000-0000-000000000000": []
 }`,
@@ -298,6 +324,7 @@ func TestGetDeviceList(t *testing.T) {
 		{
 			name:         "No devices for EmptyUUID",
 			outputFormat: "text",
+			prettify:     false,
 			responseBody: `{
   "other-uuid": ["ABB7F595EC47", "ABB7013B85DE"]
 }`,
@@ -308,6 +335,7 @@ func TestGetDeviceList(t *testing.T) {
 		{
 			name:          "HTTP error response",
 			outputFormat:  "text",
+			prettify:      false,
 			responseBody:  `{"error": "Unauthorized"}`,
 			responseCode:  http.StatusUnauthorized,
 			expectError:   true,
@@ -316,6 +344,7 @@ func TestGetDeviceList(t *testing.T) {
 		{
 			name:          "Invalid JSON response",
 			outputFormat:  "text",
+			prettify:      false,
 			responseBody:  `invalid json`,
 			responseCode:  http.StatusOK,
 			expectError:   true,
@@ -346,7 +375,7 @@ func TestGetDeviceList(t *testing.T) {
 			defer func() { os.Stdout = oldStdout }()
 
 			// Test GetDeviceList function
-			err := GetDeviceList(v, false, false, "info", tt.outputFormat)
+			err := GetDeviceList(v, false, false, "info", tt.outputFormat, tt.prettify)
 
 			// Close pipe and read output
 			_ = w.Close()
@@ -388,7 +417,7 @@ password: test-pass`
 	v := viper.New()
 
 	// Test GetDeviceList function - should fail due to invalid YAML
-	err = GetDeviceList(v, true, false, "info", "text")
+	err = GetDeviceList(v, true, false, "info", "text", false)
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
 	}
@@ -397,7 +426,7 @@ password: test-pass`
 // TestGetDeviceListWithNilViper tests GetDeviceList with nil viper instance
 func TestGetDeviceListWithNilViper(t *testing.T) {
 	// Test GetDeviceList function with nil viper
-	err := GetDeviceList(nil, true, false, "info", "text")
+	err := GetDeviceList(nil, true, false, "info", "text", false)
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
 	}
@@ -409,7 +438,7 @@ func TestGetDeviceListFunctionExists(t *testing.T) {
 	v := setupViper(t)
 
 	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
-	err := GetDeviceList(v, true, false, "info", "text")
+	err := GetDeviceList(v, true, false, "info", "text", false)
 	// We expect this to fail due to network/connection issues, but the function should exist
 	if err == nil {
 		t.Log("GetDeviceList function exists and was called successfully")
@@ -437,6 +466,7 @@ func TestGetConfiguration(t *testing.T) {
 	tests := []struct {
 		name          string
 		outputFormat  string
+		prettify      bool
 		responseBody  string
 		responseCode  int
 		expectError   bool
@@ -446,6 +476,7 @@ func TestGetConfiguration(t *testing.T) {
 		{
 			name:         "Successful JSON output",
 			outputFormat: "json",
+			prettify:     false,
 			responseBody: `{
   "00000000-0000-0000-0000-000000000000": {
     "devices": {
@@ -475,8 +506,63 @@ func TestGetConfiguration(t *testing.T) {
 `,
 		},
 		{
+			name:         "Successful JSON output with prettify",
+			outputFormat: "json",
+			prettify:     true,
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "devices": {
+      "ABB7F595EC47": {},
+      "ABB7013B85DE": {}
+    },
+    "floorplan": {
+      "floors": {}
+    },
+    "sysapName": "Test System",
+    "users": {
+      "user1": {
+        "enabled": false,
+        "flags": null,
+        "grantedPermissions": null,
+        "jid": "",
+        "name": "Test User",
+        "requestedPermissions": null,
+        "role": ""
+      }
+    }
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "devices": {
+      "ABB7013B85DE": {},
+      "ABB7F595EC47": {}
+    },
+    "floorplan": {
+      "floors": {}
+    },
+    "sysapName": "Test System",
+    "users": {
+      "user1": {
+        "enabled": false,
+        "flags": null,
+        "grantedPermissions": null,
+        "jid": "",
+        "name": "Test User",
+        "requestedPermissions": null,
+        "role": ""
+      }
+    }
+  }
+}
+`,
+		},
+		{
 			name:         "Successful text output",
 			outputFormat: "text",
+			prettify:     false,
 			responseBody: `{
   "00000000-0000-0000-0000-000000000000": {
     "devices": {
@@ -508,6 +594,7 @@ func TestGetConfiguration(t *testing.T) {
 		{
 			name:         "Empty configuration",
 			outputFormat: "text",
+			prettify:     false,
 			responseBody: `{}`,
 			responseCode: http.StatusOK,
 			expectError:  false,
@@ -516,6 +603,7 @@ func TestGetConfiguration(t *testing.T) {
 		{
 			name:          "HTTP error response",
 			outputFormat:  "text",
+			prettify:      false,
 			responseBody:  `{"error": "Unauthorized"}`,
 			responseCode:  http.StatusUnauthorized,
 			expectError:   true,
@@ -524,6 +612,7 @@ func TestGetConfiguration(t *testing.T) {
 		{
 			name:          "Invalid JSON response",
 			outputFormat:  "text",
+			prettify:      false,
 			responseBody:  `invalid json`,
 			responseCode:  http.StatusOK,
 			expectError:   true,
@@ -554,7 +643,7 @@ func TestGetConfiguration(t *testing.T) {
 			defer func() { os.Stdout = oldStdout }()
 
 			// Test GetConfiguration function
-			err := GetConfiguration(v, false, false, "info", tt.outputFormat)
+			err := GetConfiguration(v, false, false, "info", tt.outputFormat, tt.prettify)
 
 			// Close pipe and read output
 			_ = w.Close()
@@ -596,7 +685,7 @@ password: test-pass`
 	v := viper.New()
 
 	// Test GetConfiguration function - should fail due to invalid YAML
-	err = GetConfiguration(v, true, false, "info", "text")
+	err = GetConfiguration(v, true, false, "info", "text", false)
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
 	}
@@ -605,7 +694,7 @@ password: test-pass`
 // TestGetConfigurationWithNilViper tests GetConfiguration with nil viper instance
 func TestGetConfigurationWithNilViper(t *testing.T) {
 	// Test GetConfiguration function with nil viper
-	err := GetConfiguration(nil, true, false, "info", "text")
+	err := GetConfiguration(nil, true, false, "info", "text", false)
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
 	}
@@ -617,7 +706,7 @@ func TestGetConfigurationFunctionExists(t *testing.T) {
 	v := setupViper(t)
 
 	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
-	err := GetConfiguration(v, true, false, "info", "text")
+	err := GetConfiguration(v, true, false, "info", "text", false)
 	// We expect this to fail due to network/connection issues, but the function should exist
 	if err == nil {
 		t.Log("GetConfiguration function exists and was called successfully")
@@ -699,6 +788,7 @@ func TestGetDevice(t *testing.T) {
 		name          string
 		serial        string
 		outputFormat  string
+		prettify      bool
 		responseBody  string
 		responseCode  int
 		expectError   bool
@@ -709,6 +799,7 @@ func TestGetDevice(t *testing.T) {
 			name:         "Successful JSON output",
 			serial:       "ABB7F595EC47",
 			outputFormat: "json",
+			prettify:     false,
 			responseBody: `{
   "00000000-0000-0000-0000-000000000000": {
     "devices": {
@@ -736,9 +827,59 @@ func TestGetDevice(t *testing.T) {
 `,
 		},
 		{
+			name:         "Successful JSON output with prettify",
+			serial:       "ABB7F595EC47",
+			outputFormat: "json",
+			prettify:     true,
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "devices": {
+      "ABB7F595EC47": {
+        "displayName": "Living Room Light",
+        "room": "Living Room",
+        "floor": "Ground Floor",
+        "interface": "KNX",
+        "nativeId": "1.1.1",
+        "channels": {
+          "ch0000": {
+            "name": "Light Control"
+          }
+        },
+        "parameters": {
+          "param1": "value1"
+        }
+      }
+    }
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "devices": {
+      "ABB7F595EC47": {
+        "displayName": "Living Room Light",
+        "room": "Living Room",
+        "floor": "Ground Floor",
+        "interface": "KNX",
+        "nativeId": "1.1.1",
+        "channels": {
+          "ch0000": {}
+        },
+        "parameters": {
+          "param1": "value1"
+        }
+      }
+    }
+  }
+}
+`,
+		},
+		{
 			name:         "Successful text output",
 			serial:       "ABB7F595EC47",
 			outputFormat: "text",
+			prettify:     false,
 			responseBody: `{
   "00000000-0000-0000-0000-000000000000": {
     "devices": {
@@ -768,6 +909,7 @@ func TestGetDevice(t *testing.T) {
 			name:         "Device with minimal fields",
 			serial:       "ABB7F595EC47",
 			outputFormat: "text",
+			prettify:     false,
 			responseBody: `{
   "00000000-0000-0000-0000-000000000000": {
     "devices": {
@@ -785,6 +927,7 @@ func TestGetDevice(t *testing.T) {
 			name:         "Empty device response",
 			serial:       "ABB7F595EC47",
 			outputFormat: "text",
+			prettify:     false,
 			responseBody: `{}`,
 			responseCode: http.StatusOK,
 			expectError:  false,
@@ -794,6 +937,7 @@ func TestGetDevice(t *testing.T) {
 			name:         "No devices for EmptyUUID",
 			serial:       "ABB7F595EC47",
 			outputFormat: "text",
+			prettify:     false,
 			responseBody: `{
   "other-uuid": {
     "devices": {
@@ -867,7 +1011,7 @@ func TestGetDevice(t *testing.T) {
 			defer func() { os.Stdout = oldStdout }()
 
 			// Test GetDevice function
-			err := GetDevice(v, false, false, "info", tt.outputFormat, tt.serial)
+			err := GetDevice(v, false, false, "info", tt.outputFormat, tt.prettify, tt.serial)
 
 			// Close pipe and read output
 			_ = w.Close()
@@ -909,7 +1053,7 @@ password: test-pass`
 	v := viper.New()
 
 	// Test GetDevice function - should fail due to invalid YAML
-	err = GetDevice(v, true, false, "info", "text", "ABB7F595EC47")
+	err = GetDevice(v, true, false, "info", "text", false, "ABB7F595EC47")
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
 	}
@@ -918,7 +1062,7 @@ password: test-pass`
 // TestGetDeviceWithNilViper tests GetDevice with nil viper instance
 func TestGetDeviceWithNilViper(t *testing.T) {
 	// Test GetDevice function with nil viper
-	err := GetDevice(nil, true, false, "info", "text", "ABB7F595EC47")
+	err := GetDevice(nil, true, false, "info", "text", false, "ABB7F595EC47")
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
 	}
@@ -930,7 +1074,7 @@ func TestGetDeviceFunctionExists(t *testing.T) {
 	v := setupViper(t)
 
 	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
-	err := GetDevice(v, true, false, "info", "text", "ABB7F595EC47")
+	err := GetDevice(v, true, false, "info", "text", false, "ABB7F595EC47")
 	// We expect this to fail due to network/connection issues, but the function should exist
 	if err == nil {
 		t.Log("GetDevice function exists and was called successfully")
@@ -945,32 +1089,110 @@ func TestOutputJSON(t *testing.T) {
 		name          string
 		data          any
 		dataType      string
+		prettify      bool
 		expectError   bool
 		errorContains string
+		expectOutput  string
 	}{
 		{
-			name:        "Valid JSON data",
+			name:        "Valid JSON data without prettify",
 			data:        map[string]string{"key": "value"},
 			dataType:    "test data",
+			prettify:    false,
 			expectError: false,
+			expectOutput: `{"key":"value"}
+`,
 		},
 		{
-			name:        "Complex nested data",
+			name:        "Valid JSON data with prettify",
+			data:        map[string]string{"key": "value"},
+			dataType:    "test data",
+			prettify:    true,
+			expectError: false,
+			expectOutput: `{
+  "key": "value"
+}
+`,
+		},
+		{
+			name:        "Complex nested data without prettify",
 			data:        map[string]any{"nested": map[string]int{"count": 42}},
 			dataType:    "complex data",
+			prettify:    false,
 			expectError: false,
+			expectOutput: `{"nested":{"count":42}}
+`,
 		},
 		{
-			name:        "Empty data",
+			name:        "Complex nested data with prettify",
+			data:        map[string]any{"nested": map[string]int{"count": 42}},
+			dataType:    "complex data",
+			prettify:    true,
+			expectError: false,
+			expectOutput: `{
+  "nested": {
+    "count": 42
+  }
+}
+`,
+		},
+		{
+			name:        "Empty data without prettify",
 			data:        map[string]any{},
 			dataType:    "empty data",
+			prettify:    false,
 			expectError: false,
+			expectOutput: `{}
+`,
 		},
 		{
-			name:        "Nil data",
+			name:        "Empty data with prettify",
+			data:        map[string]any{},
+			dataType:    "empty data",
+			prettify:    true,
+			expectError: false,
+			expectOutput: `{}
+`,
+		},
+		{
+			name:        "Nil data without prettify",
 			data:        nil,
 			dataType:    "nil data",
+			prettify:    false,
 			expectError: false,
+			expectOutput: `null
+`,
+		},
+		{
+			name:        "Nil data with prettify",
+			data:        nil,
+			dataType:    "nil data",
+			prettify:    true,
+			expectError: false,
+			expectOutput: `null
+`,
+		},
+		{
+			name:        "Array data without prettify",
+			data:        []string{"item1", "item2", "item3"},
+			dataType:    "array data",
+			prettify:    false,
+			expectError: false,
+			expectOutput: `["item1","item2","item3"]
+`,
+		},
+		{
+			name:        "Array data with prettify",
+			data:        []string{"item1", "item2", "item3"},
+			dataType:    "array data",
+			prettify:    true,
+			expectError: false,
+			expectOutput: `[
+  "item1",
+  "item2",
+  "item3"
+]
+`,
 		},
 	}
 
@@ -983,7 +1205,7 @@ func TestOutputJSON(t *testing.T) {
 			defer func() { os.Stdout = oldStdout }()
 
 			// Test outputJSON function
-			err := outputJSON(tt.data, tt.dataType)
+			err := outputJSON(tt.data, tt.dataType, tt.prettify)
 
 			// Close pipe and read output
 			_ = w.Close()
@@ -1007,7 +1229,279 @@ func TestOutputJSON(t *testing.T) {
 						t.Errorf("Output is not valid JSON: %v", jsonErr)
 					}
 				}
+				// Check expected output if specified
+				if tt.expectOutput != "" && string(output) != tt.expectOutput {
+					t.Errorf("Expected output '%s', got '%s'", tt.expectOutput, string(output))
+				}
 			}
 		})
+	}
+}
+
+// TestGetDatapoint tests the GetDatapoint function with various scenarios
+func TestGetDatapoint(t *testing.T) {
+	tests := []struct {
+		name          string
+		serial        string
+		channel       string
+		datapoint     string
+		outputFormat  string
+		prettify      bool
+		responseBody  string
+		responseCode  int
+		expectError   bool
+		errorContains string
+		expectOutput  string
+	}{
+		{
+			name:         "Successful JSON output",
+			serial:       "ABB7F595EC47",
+			channel:      "ch0000",
+			datapoint:    "idp0000",
+			outputFormat: "json",
+			prettify:     false,
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "values": ["100"]
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: `{"00000000-0000-0000-0000-000000000000":{"values":["100"]}}
+`,
+		},
+		{
+			name:         "Successful JSON output with prettify",
+			serial:       "ABB7F595EC47",
+			channel:      "ch0000",
+			datapoint:    "idp0000",
+			outputFormat: "json",
+			prettify:     true,
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "values": ["100"]
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "values": [
+      "100"
+    ]
+  }
+}
+`,
+		},
+		{
+			name:         "Successful text output",
+			serial:       "ABB7F595EC47",
+			channel:      "ch0000",
+			datapoint:    "idp0000",
+			outputFormat: "text",
+			prettify:     false,
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "values": ["100"]
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "Datapoint: ABB7F595EC47.ch0000.idp0000\n  Values: [100]\n",
+		},
+		{
+			name:         "Datapoint with empty values",
+			serial:       "ABB7F595EC47",
+			channel:      "ch0000",
+			datapoint:    "idp0000",
+			outputFormat: "text",
+			prettify:     false,
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "values": []
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "Datapoint: ABB7F595EC47.ch0000.idp0000\n  Values: (empty)\n",
+		},
+		{
+			name:         "Datapoint with multiple values",
+			serial:       "ABB7F595EC47",
+			channel:      "ch0000",
+			datapoint:    "idp0000",
+			outputFormat: "text",
+			prettify:     false,
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "values": ["100", "200", "300"]
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "Datapoint: ABB7F595EC47.ch0000.idp0000\n  Values: [100 200 300]\n",
+		},
+		{
+			name:         "Empty datapoint response",
+			serial:       "ABB7F595EC47",
+			channel:      "ch0000",
+			datapoint:    "idp0000",
+			outputFormat: "text",
+			prettify:     false,
+			responseBody: `{}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "No datapoint found: ABB7F595EC47.ch0000.idp0000\n",
+		},
+		{
+			name:         "No datapoint for EmptyUUID",
+			serial:       "ABB7F595EC47",
+			channel:      "ch0000",
+			datapoint:    "idp0000",
+			outputFormat: "text",
+			prettify:     false,
+			responseBody: `{
+  "other-uuid": {
+    "values": ["100"]
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "No datapoint found: ABB7F595EC47.ch0000.idp0000\n",
+		},
+		{
+			name:          "HTTP error response",
+			serial:        "ABB7F595EC47",
+			channel:       "ch0000",
+			datapoint:     "idp0000",
+			outputFormat:  "text",
+			prettify:      false,
+			responseBody:  `{"error": "Unauthorized"}`,
+			responseCode:  http.StatusUnauthorized,
+			expectError:   true,
+			errorContains: "failed to get datapoint",
+		},
+		{
+			name:          "Invalid JSON response",
+			serial:        "ABB7F595EC47",
+			channel:       "ch0000",
+			datapoint:     "idp0000",
+			outputFormat:  "text",
+			prettify:      false,
+			responseBody:  `invalid json`,
+			responseCode:  http.StatusOK,
+			expectError:   true,
+			errorContains: "failed to get datapoint",
+		},
+		{
+			name:         "Different serial, channel, and datapoint",
+			serial:       "DEVICE123",
+			channel:      "ch0001",
+			datapoint:    "idp0001",
+			outputFormat: "text",
+			prettify:     false,
+			responseBody: `{
+  "00000000-0000-0000-0000-000000000000": {
+    "values": ["50"]
+  }
+}`,
+			responseCode: http.StatusOK,
+			expectError:  false,
+			expectOutput: "Datapoint: DEVICE123.ch0001.idp0001\n  Values: [50]\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create viper instance
+			v := setupViper(t)
+
+			// Setup mock SystemAccessPoint
+			sysAp, _, _ := setupMock(t, v, tt.responseCode, tt.responseBody)
+
+			// Override the setupFunc to use the mock SystemAccessPoint
+			setupFunc = func(_ *viper.Viper, _ string, _ bool, _ bool, _ string) (*freeathome.SystemAccessPoint, error) {
+				return sysAp, nil
+			}
+			defer func() {
+				setupFunc = setup
+			}()
+
+			// Capture stdout for output testing
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			defer func() { os.Stdout = oldStdout }()
+
+			// Test GetDatapoint function
+			err := GetDatapoint(v, false, false, "info", tt.outputFormat, tt.prettify, tt.serial, tt.channel, tt.datapoint)
+
+			// Close pipe and read output
+			_ = w.Close()
+			output, _ := io.ReadAll(r)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected error but got none")
+				} else if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("Expected error to contain '%s', got '%s'", tt.errorContains, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				if tt.expectOutput != "" && string(output) != tt.expectOutput {
+					t.Errorf("Expected output '%s', got '%s'", tt.expectOutput, string(output))
+				}
+			}
+		})
+	}
+}
+
+// TestGetDatapointWithInvalidConfigFile tests GetDatapoint with an invalid config file
+func TestGetDatapointWithInvalidConfigFile(t *testing.T) {
+	// Create a temporary config file with invalid YAML
+	configFile := filepath.Join(t.TempDir(), "invalid-config.yaml")
+
+	invalidYAML := `hostname: test-host
+username: [invalid array]
+password: test-pass`
+
+	err := os.WriteFile(configFile, []byte(invalidYAML), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test config file: %v", err)
+	}
+
+	// Create a fresh viper instance for testing
+	v := viper.New()
+
+	// Test GetDatapoint function - should fail due to invalid YAML
+	err = GetDatapoint(v, true, false, "info", "text", false, "ABB7F595EC47", "ch0000", "idp0000")
+	if err == nil {
+		t.Error("Expected error when loading invalid config file, got none")
+	}
+}
+
+// TestGetDatapointWithNilViper tests GetDatapoint with nil viper instance
+func TestGetDatapointWithNilViper(t *testing.T) {
+	// Test GetDatapoint function with nil viper
+	err := GetDatapoint(nil, true, false, "info", "text", false, "ABB7F595EC47", "ch0000", "idp0000")
+	if err == nil {
+		t.Error("Expected error with nil viper, got none")
+	}
+}
+
+// TestGetDatapointFunctionExists tests that the GetDatapoint function exists and can be called
+func TestGetDatapointFunctionExists(t *testing.T) {
+	// Create viper instance
+	v := setupViper(t)
+
+	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
+	err := GetDatapoint(v, true, false, "info", "text", false, "ABB7F595EC47", "ch0000", "idp0000")
+	// We expect this to fail due to network/connection issues, but the function should exist
+	if err == nil {
+		t.Log("GetDatapoint function exists and was called successfully")
+	} else {
+		t.Logf("GetDatapoint function exists but failed as expected: %v", err)
 	}
 }

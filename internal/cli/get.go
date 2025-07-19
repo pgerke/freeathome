@@ -47,8 +47,16 @@ func handleSysApError(err error, operation string, tlsEnabled, skipTLSVerify boo
 }
 
 // outputJSON provides consistent JSON output formatting for system access point operations
-func outputJSON(data any, dataType string) error {
-	jsonData, err := json.Marshal(data)
+func outputJSON(data any, dataType string, prettify bool) error {
+	var jsonData []byte
+	var err error
+
+	if prettify {
+		jsonData, err = json.MarshalIndent(data, "", "  ")
+	} else {
+		jsonData, err = json.Marshal(data)
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to marshal %s to JSON: %w", dataType, err)
 	}
@@ -95,7 +103,7 @@ func setup(v *viper.Viper, configFile string, tlsEnabled, skipTLSVerify bool, lo
 }
 
 // GetDeviceList retrieves and displays the device list
-func GetDeviceList(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string) error {
+func GetDeviceList(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string, prettify bool) error {
 	// Setup system access point
 	sysAp, err := setupFunc(v, "", tlsEnabled, skipTLSVerify, logLevel)
 	if err != nil {
@@ -110,7 +118,7 @@ func GetDeviceList(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel stri
 
 	// Output depending on output format
 	if outputFormat == "json" {
-		return outputJSON(deviceList, "device list")
+		return outputJSON(deviceList, "device list", prettify)
 	}
 
 	// Check if device list is empty
@@ -140,7 +148,7 @@ func GetDeviceList(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel stri
 }
 
 // GetConfiguration retrieves and displays the configuration
-func GetConfiguration(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string) error {
+func GetConfiguration(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string, prettify bool) error {
 	// Setup system access point
 	sysAp, err := setupFunc(v, "", tlsEnabled, skipTLSVerify, logLevel)
 	if err != nil {
@@ -155,7 +163,7 @@ func GetConfiguration(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel s
 
 	// Output depending on output format
 	if outputFormat == "json" {
-		return outputJSON(configuration, "configuration")
+		return outputJSON(configuration, "configuration", prettify)
 	}
 
 	// Check if configuration is empty
@@ -178,7 +186,7 @@ func GetConfiguration(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel s
 }
 
 // GetDevice retrieves and displays a specific device by serial number
-func GetDevice(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string, serial string) error {
+func GetDevice(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string, prettify bool, serial string) error {
 	// Setup system access point
 	sysAp, err := setupFunc(v, "", tlsEnabled, skipTLSVerify, logLevel)
 	if err != nil {
@@ -193,7 +201,7 @@ func GetDevice(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, 
 
 	// Output depending on output format
 	if outputFormat == "json" {
-		return outputJSON(device, "device")
+		return outputJSON(device, "device", prettify)
 	}
 
 	// Check if device is empty
@@ -238,6 +246,49 @@ func GetDevice(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, 
 	}
 	if deviceData.Parameters != nil {
 		fmt.Printf("  Parameters: %d\n", len(*deviceData.Parameters))
+	}
+
+	return nil
+}
+
+// GetDatapoint retrieves and displays a specific datapoint
+func GetDatapoint(v *viper.Viper, tlsEnabled, skipTLSVerify bool, logLevel string, outputFormat string, prettify bool, serial string, channel string, datapoint string) error {
+	// Setup system access point
+	sysAp, err := setupFunc(v, "", tlsEnabled, skipTLSVerify, logLevel)
+	if err != nil {
+		return err
+	}
+
+	// Get datapoint
+	datapointResponse, err := sysAp.GetDatapoint(serial, channel, datapoint)
+	if err != nil {
+		return handleSysApError(err, "get datapoint", tlsEnabled, skipTLSVerify)
+	}
+
+	// Output depending on output format
+	if outputFormat == "json" {
+		return outputJSON(datapointResponse, "datapoint", prettify)
+	}
+
+	// Check if datapoint response is empty
+	if datapointResponse == nil || len(*datapointResponse) == 0 {
+		fmt.Printf("No datapoint found: %s.%s.%s\n", serial, channel, datapoint)
+		return nil
+	}
+
+	// Get datapoint for the system access point (using EmptyUUID as key)
+	datapointData, exists := (*datapointResponse)[models.EmptyUUID]
+	if !exists {
+		fmt.Printf("No datapoint found: %s.%s.%s\n", serial, channel, datapoint)
+		return nil
+	}
+
+	// Output as plain text
+	fmt.Printf("Datapoint: %s.%s.%s\n", serial, channel, datapoint)
+	if len(datapointData.Values) > 0 {
+		fmt.Printf("  Values: %v\n", datapointData.Values)
+	} else {
+		fmt.Printf("  Values: (empty)\n")
 	}
 
 	return nil

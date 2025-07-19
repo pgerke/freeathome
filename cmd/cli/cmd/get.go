@@ -15,6 +15,8 @@ var (
 	logLevel string
 	// Output format configuration
 	outputFormat string
+	// JSON output configuration
+	prettify bool
 
 	getCmd = &cobra.Command{
 		Use:   "get",
@@ -39,11 +41,21 @@ var (
 	}
 
 	deviceCmd = &cobra.Command{
-		Use:   "device [serial]",
-		Short: "Get a specific device from the system access point",
-		Long:  `Retrieve and display information about a specific device by its serial number.`,
-		Args:  cobra.ExactArgs(1),
-		RunE:  runGetDevice,
+		Use:     "device [serial]",
+		Aliases: []string{"dev"},
+		Short:   "Get a specific device from the system access point",
+		Long:    `Retrieve and display information about a specific device by its serial number.`,
+		Args:    cobra.ExactArgs(1),
+		RunE:    runGetDevice,
+	}
+
+	datapointCmd = &cobra.Command{
+		Use:     "datapoint [serial] [channel] [datapoint]",
+		Aliases: []string{"dp"},
+		Short:   "Get a specific datapoint from the system access point",
+		Long:    `Retrieve and display information about a specific datapoint by its serial number, channel, and datapoint identifier.`,
+		Args:    cobra.ExactArgs(3),
+		RunE:    runGetDatapoint,
 	}
 )
 
@@ -54,6 +66,7 @@ func init() {
 	getCmd.AddCommand(devicelistCmd)
 	getCmd.AddCommand(configurationCmd)
 	getCmd.AddCommand(deviceCmd)
+	getCmd.AddCommand(datapointCmd)
 
 	// Add TLS configuration flags
 	getCmd.PersistentFlags().BoolVar(&tlsEnabled, "tls", true, "Enable TLS for connection")
@@ -64,16 +77,23 @@ func init() {
 
 	// Add output format flag
 	getCmd.PersistentFlags().StringVar(&outputFormat, "output", "json", "Set the output format (json, text)")
+
+	// Add prettify flag
+	getCmd.PersistentFlags().BoolVar(&prettify, "prettify", false, "Prettify JSON output with indentation. Only used for JSON output.")
 }
 
 func runGetDeviceList(cmd *cobra.Command, args []string) error {
-	return cli.GetDeviceList(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat)
+	return cli.GetDeviceList(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat, prettify)
 }
 
 func runGetConfiguration(cmd *cobra.Command, args []string) error {
-	return cli.GetConfiguration(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat)
+	return cli.GetConfiguration(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat, prettify)
 }
 
 func runGetDevice(cmd *cobra.Command, args []string) error {
-	return cli.GetDevice(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat, args[0])
+	return cli.GetDevice(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat, prettify, args[0])
+}
+
+func runGetDatapoint(cmd *cobra.Command, args []string) error {
+	return cli.GetDatapoint(viper.GetViper(), tlsEnabled, skipTLSVerify, logLevel, outputFormat, prettify, args[0], args[1], args[2])
 }

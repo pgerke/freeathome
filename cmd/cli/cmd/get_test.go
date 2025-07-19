@@ -120,7 +120,7 @@ func TestGetCommandFlagDefaults(t *testing.T) {
 
 // TestGetCommandSubcommands tests that the get command has the expected subcommands.
 func TestGetCommandSubcommands(t *testing.T) {
-	expectedSubcommands := []string{"devicelist", "configuration", "device"}
+	expectedSubcommands := []string{"devicelist", "configuration", "device", "datapoint"}
 
 	for _, expected := range expectedSubcommands {
 		found := slices.ContainsFunc(getCmd.Commands(), func(cmd *cobra.Command) bool {
@@ -218,4 +218,41 @@ func TestRunGetDeviceFunction(t *testing.T) {
 
 	// This will likely fail since we're not providing proper args, but we're testing it doesn't panic
 	_ = runGetDevice(nil, []string{"test-serial"})
+}
+
+// TestDatapointCommand tests that the datapoint command has the expected properties.
+func TestDatapointCommand(t *testing.T) {
+	if datapointCmd.Use != "datapoint [serial] [channel] [datapoint]" {
+		t.Errorf("Expected datapoint command Use to be 'datapoint [serial] [channel] [datapoint]', got '%s'", datapointCmd.Use)
+	}
+
+	if datapointCmd.Short == "" {
+		t.Error("Expected datapoint command to have a Short description")
+	}
+
+	if datapointCmd.Long == "" {
+		t.Error("Expected datapoint command to have a Long description")
+	}
+}
+
+// TestDatapointCommandIsChildOfGet tests that the datapoint command is properly added to the get command.
+func TestDatapointCommandIsChildOfGet(t *testing.T) {
+	found := slices.ContainsFunc(getCmd.Commands(), func(cmd *cobra.Command) bool {
+		return cmd.Name() == "datapoint"
+	})
+	if !found {
+		t.Error("Expected datapoint command to be a child of get command")
+	}
+}
+
+// TestRunGetDatapointFunction tests that the runGetDatapoint function exists and can be called.
+func TestRunGetDatapointFunction(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("runGetDatapoint() panicked: %v", r)
+		}
+	}()
+
+	// This will likely fail since we're not providing proper args, but we're testing it doesn't panic
+	_ = runGetDatapoint(nil, []string{"test-serial", "test-channel", "test-datapoint"})
 }
