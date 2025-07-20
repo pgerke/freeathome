@@ -17,7 +17,7 @@ const expectedNil = "Expected nil result"
 const unexpectedLogOutput = "Unexpected log output, got: %s"
 
 // setup initializes a SystemAccessPoint with a mock logger and returns it along with a buffer to capture log output.
-func setup(t *testing.T, tlsEnabled bool) (*SystemAccessPoint, *bytes.Buffer, chan slog.Record) {
+func setup(t *testing.T, tlsEnabled bool, skipTLSVerify bool) (*SystemAccessPoint, *bytes.Buffer, chan slog.Record) {
 	t.Helper()
 
 	// Create a buffer to capture log output
@@ -34,7 +34,11 @@ func setup(t *testing.T, tlsEnabled bool) (*SystemAccessPoint, *bytes.Buffer, ch
 	logger := NewDefaultLogger(channelHandler)
 
 	// Create a SystemAccessPoint with the default logger
-	return NewSystemAccessPoint("localhost", "user", "password", tlsEnabled, false, logger), &buf, channelHandler.records
+	config := NewConfig("localhost", "user", "password")
+	config.TLSEnabled = tlsEnabled
+	config.SkipTLSVerify = skipTLSVerify
+	config.Logger = logger
+	return MustNewSystemAccessPoint(config), &buf, channelHandler.records
 }
 
 // MockRoundTripper is a mock implementation of http.RoundTripper for testing purposes.

@@ -21,7 +21,7 @@ const testMessageValid = "valid message"
 
 // TestSystemAccessPointWebSocketMessageHandler tests the webSocketMessageHandler method of SystemAccessPoint.
 func TestSystemAccessPointWebSocketMessageHandler(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	defer sysAp.waitGroup.Wait()
 	sysAp.webSocketMessageChannel = make(chan []byte, 10)
 
@@ -98,7 +98,7 @@ func TestSystemAccessPointWebSocketMessageHandler(t *testing.T) {
 }
 
 func TestSystemAccessPointWebSocketMessageHandlerMissingChannel(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	defer sysAp.waitGroup.Wait()
 	sysAp.webSocketMessageChannel = nil
 
@@ -118,7 +118,7 @@ func TestSystemAccessPointConnectWebSocketSuccess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, _, records := setup(t, false)
+	sysAp, _, records := setup(t, false, false)
 
 	// Mock the WebSocket connection
 	dialer := &websocket.Dialer{}
@@ -136,7 +136,7 @@ func TestSystemAccessPointConnectWebSocketSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	sysAp.hostName = strings.TrimPrefix(server.URL, "http://")
+	sysAp.config.Hostname = strings.TrimPrefix(server.URL, "http://")
 
 	// Wait for the expected record in a separate goroutine
 	go func() {
@@ -157,11 +157,60 @@ func TestSystemAccessPointConnectWebSocketSuccess(t *testing.T) {
 	sysAp.ConnectWebSocket(ctx, 1*time.Hour)
 }
 
+// TestSystemAccessPointConnectWebSocketSkipTlsVerify tests the successful connection of the WebSocket with skip TLS verify.
+func TestSystemAccessPointConnectWebSocketSkipTlsVerify(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sysAp, buf, records := setup(t, true, true)
+
+	// Mock the WebSocket connection
+	dialer := &websocket.Dialer{}
+	websocket.DefaultDialer = dialer
+
+	// Mock the WebSocket server
+	var conn *websocket.Conn
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{}
+		var err error
+		conn, err = upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Fatalf("Failed to upgrade WebSocket: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	sysAp.config.Hostname = strings.TrimPrefix(server.URL, "https://")
+
+	// Wait for the expected record in a separate goroutine
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				// Check the log output
+				logOutput := buf.String()
+				if !strings.Contains(logOutput, "this is not recommended") {
+					t.Errorf("Expected log output to contain 'this is not recommended', got: %s", logOutput)
+				}
+				return
+			case record := <-records:
+				if record.Level == slog.LevelInfo && strings.Contains(record.Message, "web socket connected successfully") {
+					cancel()
+					_ = conn.Close()
+				}
+			}
+		}
+	}()
+
+	// Run ConnectWebSocket in a separate goroutine
+	sysAp.ConnectWebSocket(ctx, 1*time.Hour)
+}
+
 // TestSystemAccessPointConnectWebSocketContextCancelled tests the behavior when the context is cancelled.
 func TestSystemAccessPointConnectWebSocketContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	sysAp, _, records := setup(t, false)
+	sysAp, _, records := setup(t, false, false)
 
 	// Mock the WebSocket connection
 	dialer := &websocket.Dialer{}
@@ -179,7 +228,7 @@ func TestSystemAccessPointConnectWebSocketContextCancelled(t *testing.T) {
 	}))
 	defer server.Close()
 
-	sysAp.hostName = strings.TrimPrefix(server.URL, "http://")
+	sysAp.config.Hostname = strings.TrimPrefix(server.URL, "http://")
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -226,11 +275,11 @@ func TestSystemAccessPointConnectWebSocketFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, buf, _ := setup(t, false)
+	sysAp, buf, _ := setup(t, false, false)
 	defer sysAp.waitGroup.Wait()
 
 	// Set an invalid host name to simulate connection failure
-	sysAp.hostName = "invalid-host"
+	sysAp.config.Hostname = "invalid-host"
 
 	// set up the error handler
 	sysAp.onError = func(err error) {
@@ -261,7 +310,7 @@ func TestSystemAccessPointWebSocketMessageLoopTextMessage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	sysAp.webSocketMessageChannel = make(chan []byte, 10)
 	sysAp.messageReceivedChannel = make(chan struct{}, 1)
 
@@ -307,7 +356,7 @@ func TestSystemAccessPointWebSocketMessageLoopNonTextMessage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	sysAp.webSocketMessageChannel = make(chan []byte, 10)
 	sysAp.messageReceivedChannel = make(chan struct{}, 1)
 	sysAp.onError = func(err error) {
@@ -355,7 +404,7 @@ func TestSystemAccessPointWebSocketMessageLoopMissingChannel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	sysAp.webSocketMessageChannel = nil
 	sysAp.messageReceivedChannel = make(chan struct{}, 1)
 
@@ -390,7 +439,7 @@ func TestSystemAccessPointWebSocketMessageLoopMissingChannel(t *testing.T) {
 }
 
 func TestSystemAccessPointwebSocketKeepaliveLoopMissingChannel(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	sysAp.messageReceivedChannel = nil
 
 	// Mock a WebSocket connection
@@ -412,7 +461,7 @@ func TestSystemAccessPointwebSocketKeepaliveLoopMissingChannel(t *testing.T) {
 }
 
 func TestSystemAccessPointwebSocketKeepaliveLoopSendPing(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	sysAp.messageReceivedChannel = make(chan struct{}, 1)
 
 	// Mock a WebSocket connection

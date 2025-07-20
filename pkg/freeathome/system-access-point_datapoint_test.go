@@ -11,7 +11,7 @@ import (
 )
 
 func TestSystemAccessPointGetDatapoint(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       loadTestResponseBody(t, "get_datapoint.json"),
@@ -22,7 +22,7 @@ func TestSystemAccessPointGetDatapoint(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDatapoint("abcd1234", "ch0000", "odp0001")
 
@@ -62,13 +62,13 @@ func TestSystemAccessPointGetDatapoint(t *testing.T) {
 }
 
 func TestSystemAccessPointGetDatapointCallError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
 		Response: nil,
 		Err:      error,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDatapoint("abcd1234", "ch0000", "odp0001")
 
@@ -95,7 +95,7 @@ func TestSystemAccessPointGetDatapointCallError(t *testing.T) {
 }
 
 func TestSystemAccessPointGetDatapointErrorResponse(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Status:     "Internal Server Error",
@@ -107,7 +107,7 @@ func TestSystemAccessPointGetDatapointErrorResponse(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDatapoint("abcd1234", "ch0000", "odp0001")
 
@@ -145,7 +145,7 @@ func TestSystemAccessPointGetDatapointErrorResponse(t *testing.T) {
 }
 
 func TestSystemAccessPointGetDatapointUnmarshalError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(strings.NewReader(`{"00000000-0000-0000-0000-000000000000":{"values":[123]}}`)),
@@ -155,7 +155,7 @@ func TestSystemAccessPointGetDatapointUnmarshalError(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.GetDatapoint("abcd1234", "ch0000", "odp0001")
 
@@ -182,7 +182,7 @@ func TestSystemAccessPointGetDatapointUnmarshalError(t *testing.T) {
 }
 
 func TestSystemAccessPointSetDatapoint(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       loadTestResponseBody(t, "set_datapoint.json"),
@@ -193,7 +193,7 @@ func TestSystemAccessPointSetDatapoint(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetDatapoint("abcd1234", "ch0000", "idp0001", "123")
 
@@ -234,13 +234,13 @@ func TestSystemAccessPointSetDatapoint(t *testing.T) {
 }
 
 func TestSystemAccessPointSetDatapointCallError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
 		Response: nil,
 		Err:      error,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetDatapoint("abcd1234", "ch0000", "idp0001", "123")
 
@@ -267,7 +267,7 @@ func TestSystemAccessPointSetDatapointCallError(t *testing.T) {
 }
 
 func TestSystemAccessPointSetDatapointErrorResponse(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Status:     "Internal Server Error",
@@ -279,7 +279,7 @@ func TestSystemAccessPointSetDatapointErrorResponse(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetDatapoint("abcd1234", "ch0000", "idp0001", "123")
 
@@ -317,7 +317,7 @@ func TestSystemAccessPointSetDatapointErrorResponse(t *testing.T) {
 }
 
 func TestSystemAccessPointSetDatapointUnmarshalError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(strings.NewReader(`{"00000000-0000-0000-0000-000000000000":{"result": 1}}`)),
@@ -327,7 +327,7 @@ func TestSystemAccessPointSetDatapointUnmarshalError(t *testing.T) {
 		Response: response,
 		Err:      nil,
 	}
-	sysAp.client.SetTransport(roundtripper)
+	sysAp.config.Client.SetTransport(roundtripper)
 
 	result, err := sysAp.SetDatapoint("abcd1234", "ch0000", "idp0001", "123")
 

@@ -2,6 +2,7 @@ package freeathome
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -17,6 +18,40 @@ import (
 	"github.com/pgerke/freeathome/pkg/models"
 )
 
+// Config represents the configuration for a SystemAccessPoint
+type Config struct {
+	// Hostname is the hostname or IP address of the system access point
+	Hostname string
+	// Username is the username for authentication
+	Username string
+	// Password is the password for authentication
+	Password string
+	// TLSEnabled indicates whether TLS is enabled for communication
+	TLSEnabled bool
+	// SkipTLSVerify indicates whether TLS certificate verification should be skipped
+	SkipTLSVerify bool
+	// VerboseErrors indicates whether verbose errors should be logged
+	VerboseErrors bool
+	// Logger is the logger to use for logging messages
+	Logger models.Logger
+	// Client is the REST client to use (optional, will create default if nil)
+	Client *resty.Client
+}
+
+// NewConfig creates a new Config with default values
+func NewConfig(hostname, username, password string) *Config {
+	return &Config{
+		Hostname:      hostname,
+		Username:      username,
+		Password:      password,
+		TLSEnabled:    true,
+		SkipTLSVerify: false,
+		VerboseErrors: false,
+		Logger:        nil,
+		Client:        nil,
+	}
+}
+
 type connection interface {
 	ReadMessage() (messageType int, p []byte, err error)
 	WriteControl(messageType int, data []byte, deadline time.Time) error
@@ -25,16 +60,8 @@ type connection interface {
 // SystemAccessPoint represents a system access point that can be used to communicate with a free@home system.
 type SystemAccessPoint struct {
 	UUID string
-	// hostName is the host name of the system access point.
-	hostName string
-	// logger is the logger that is used to log messages.
-	logger models.Logger
-	// tlsEnabled indicates whether TLS is enabled for communication with the system access point.
-	tlsEnabled bool
-	// verboseErrors indicates whether verbose errors should be logged.
-	verboseErrors bool
-	// client is the REST client that is used to communicate with the system access point.
-	client *resty.Client
+	// config contains the configuration for the system access point
+	config *Config
 	// waitGroup is used to synchronize the web socket connection and message handling.
 	waitGroup sync.WaitGroup
 	// webSocketMessageChannel is the channel that is used to send messages received from the web socket connection.
@@ -49,25 +76,56 @@ type SystemAccessPoint struct {
 	onError func(error)
 }
 
-// NewSystemAccessPoint creates a new SystemAccessPoint with the specified host name, user name, password, TLS enabled flag, verbose errors flag, and logger.
-func NewSystemAccessPoint(hostName string, userName string, password string, tlsEnabled bool, verboseErrors bool, logger models.Logger) *SystemAccessPoint {
-	if logger == nil {
-		logger = NewDefaultLogger(nil)
-		logger.Warn("No logger provided for SystemAccessPoint. Using default logger.")
+// NewSystemAccessPoint creates a new SystemAccessPoint with the specified configuration.
+func NewSystemAccessPoint(config *Config) (*SystemAccessPoint, error) {
+	if config == nil {
+		return nil, errors.New("config cannot be nil")
+	}
+
+	// Set default logger if not provided
+	if config.Logger == nil {
+		config.Logger = NewDefaultLogger(nil)
+		config.Logger.Warn("No logger provided for SystemAccessPoint. Using default logger.")
+	}
+
+	// Create REST client with basic auth
+	if config.Client == nil {
+		config.Client = resty.New()
+	}
+	config.Client.SetBasicAuth(config.Username, config.Password)
+
+	// Configure TLS settings if TLS is enabled
+	if config.TLSEnabled && config.SkipTLSVerify {
+		config.Logger.Warn("TLS is enabled but certificate verification is disabled, this is not recommended!")
+		config.Client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	}
 
 	return &SystemAccessPoint{
 		UUID:                    models.EmptyUUID,
-		hostName:                hostName,
-		logger:                  logger,
-		tlsEnabled:              tlsEnabled,
-		verboseErrors:           verboseErrors,
-		client:                  resty.New().SetBasicAuth(userName, password),
+		config:                  config,
 		waitGroup:               sync.WaitGroup{},
 		webSocketMessageChannel: nil,
 		messageReceivedChannel:  nil,
 		datapointRegex:          regexp.MustCompile(models.DatapointPattern),
+	}, nil
+}
+
+// MustNewSystemAccessPoint creates a new SystemAccessPoint with the specified configuration.
+// It panics if an error occurs.
+func MustNewSystemAccessPoint(config *Config) *SystemAccessPoint {
+	sysap, err := NewSystemAccessPoint(config)
+	// The error can only occur if the config is nil, which is considered a programming error.
+	// If you are not sure if the config is nil, use NewSystemAccessPoint instead.
+	if err != nil {
+		panic(err)
 	}
+	return sysap
+}
+
+// NewSystemAccessPointWithDefaults creates a new SystemAccessPoint with minimal configuration
+func NewSystemAccessPointWithDefaults(hostname, username, password string) *SystemAccessPoint {
+	config := NewConfig(hostname, username, password)
+	return MustNewSystemAccessPoint(config)
 }
 
 // emitError is a helper function to emit errors using the onError callback.
@@ -79,17 +137,22 @@ func (sysAp *SystemAccessPoint) emitError(err error) {
 
 // HostName returns the host name of the system access point.
 func (sysAp *SystemAccessPoint) GetHostName() string {
-	return sysAp.hostName
+	return sysAp.config.Hostname
 }
 
 // TlsEnabled returns whether TLS is enabled for communication with the system access point.
 func (sysAp *SystemAccessPoint) GetTlsEnabled() bool {
-	return sysAp.tlsEnabled
+	return sysAp.config.TLSEnabled
+}
+
+// SkipTLSVerify returns whether TLS certificate verification should be skipped.
+func (sysAp *SystemAccessPoint) GetSkipTLSVerify() bool {
+	return sysAp.config.SkipTLSVerify
 }
 
 // VerboseErrors returns whether verbose errors should be logged.
 func (sysAp *SystemAccessPoint) GetVerboseErrors() bool {
-	return sysAp.verboseErrors
+	return sysAp.config.VerboseErrors
 }
 
 // GetUrl constructs a URL string for the SystemAccessPoint based on the provided path.
@@ -102,24 +165,24 @@ func (sysAp *SystemAccessPoint) GetVerboseErrors() bool {
 //   - A formatted URL string that includes the protocol, hostname, and the provided path.
 func (sysAp *SystemAccessPoint) GetUrl(path string) string {
 	var protocol string
-	if sysAp.tlsEnabled {
+	if sysAp.config.TLSEnabled {
 		protocol = "https"
 	} else {
 		protocol = "http"
 	}
 
-	return fmt.Sprintf("%s://%s/fhapi/v1/api/rest/%s", protocol, sysAp.hostName, path)
+	return fmt.Sprintf("%s://%s/fhapi/v1/api/rest/%s", protocol, sysAp.config.Hostname, path)
 }
 
 // GetWebSocketUrl constructs a WebSocket URL string for the SystemAccessPoint.
 func (sysAp *SystemAccessPoint) getWebSocketUrl() string {
 	var protocol string
-	if sysAp.tlsEnabled {
+	if sysAp.config.TLSEnabled {
 		protocol = "wss"
 	} else {
 		protocol = "ws"
 	}
-	return fmt.Sprintf("%s://%s/fhapi/v1/api/ws", protocol, sysAp.hostName)
+	return fmt.Sprintf("%s://%s/fhapi/v1/api/ws", protocol, sysAp.config.Hostname)
 }
 
 // ConnectWebSocket establishes a web socket connection to the system access point.
@@ -137,7 +200,7 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveI
 		select {
 		case <-ctx.Done():
 			// If the context is cancelled, stop the connection attempts
-			sysAp.logger.Log("context cancelled, stopping web socket connection attempts")
+			sysAp.config.Logger.Log("context cancelled, stopping web socket connection attempts")
 			return
 		default:
 			// Attempt to establish a web socket connection
@@ -159,7 +222,7 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveI
 //   - *models.VirtualDeviceResponse: Pointer to the response struct with details of the created virtual device.
 //   - error: An error object if the operation fails, otherwise nil.
 func (sysAp *SystemAccessPoint) CreateVirtualDevice(serial string, virtualDevice *models.VirtualDevice) (*models.VirtualDeviceResponse, error) {
-	resp, err := sysAp.client.R().
+	resp, err := sysAp.config.Client.R().
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial}).
 		SetBody(virtualDevice).
 		Put(sysAp.GetUrl("virtualdevice/{uuid}/{serial}"))
@@ -173,15 +236,26 @@ func (sysAp *SystemAccessPoint) webSocketConnectionLoop(ctx context.Context, kee
 	sysAp.waitGroup.Add(1)
 	defer sysAp.waitGroup.Done()
 
+	// Create a custom dialer for WebSocket connection
+	dialer := websocket.DefaultDialer
+	if sysAp.config.TLSEnabled && sysAp.config.SkipTLSVerify {
+		sysAp.config.Logger.Warn("TLS is enabled but certificate verification is disabled, this is not recommended!")
+		dialer = &websocket.Dialer{
+			Proxy:            http.ProxyFromEnvironment,
+			HandshakeTimeout: 45 * time.Second,
+			TLSClientConfig:  &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
 	// Create a new web socket connection
-	basicAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", sysAp.client.UserInfo.Username, sysAp.client.UserInfo.Password)))
-	conn, _, err := websocket.DefaultDialer.Dial(sysAp.getWebSocketUrl(), http.Header{
+	basicAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", sysAp.config.Client.UserInfo.Username, sysAp.config.Client.UserInfo.Password)))
+	conn, _, err := dialer.Dial(sysAp.getWebSocketUrl(), http.Header{
 		"Authorization": []string{fmt.Sprintf("Basic %s", basicAuth)},
 	})
 
 	// Check for errors
 	if err != nil {
-		sysAp.logger.Error("failed to connect to web socket", "error", err)
+		sysAp.config.Logger.Error("failed to connect to web socket", "error", err)
 		sysAp.emitError(err)
 		// time.Sleep(backoff)
 		return
@@ -202,18 +276,18 @@ func (sysAp *SystemAccessPoint) webSocketConnectionLoop(ctx context.Context, kee
 	go sysAp.webSocketMessageHandler()
 
 	// Start the message loop
-	sysAp.logger.Log("web socket connected successfully, starting message loop")
+	sysAp.config.Logger.Log("web socket connected successfully, starting message loop")
 	err = sysAp.webSocketMessageLoop(ctx, conn)
 
 	// Check for errors
 	if err != nil {
-		sysAp.logger.Error("web socket message loop failed", "error", err)
+		sysAp.config.Logger.Error("web socket message loop failed", "error", err)
 		sysAp.emitError(err)
 	}
 
 	// Close the web socket connection
 	err = conn.Close()
-	sysAp.logger.Debug("web socket connection closed", "error", err)
+	sysAp.config.Logger.Debug("web socket connection closed", "error", err)
 }
 
 // webSocketMessageLoop starts a loop to read messages from the web socket connection.
@@ -221,7 +295,7 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn c
 	// Verify that the connection channels are not nil
 	if sysAp.webSocketMessageChannel == nil || sysAp.messageReceivedChannel == nil {
 		errorMessage := "a connection channel is nil, cannot start message loop"
-		sysAp.logger.Error(errorMessage)
+		sysAp.config.Logger.Error(errorMessage)
 		return errors.New(errorMessage)
 	}
 
@@ -230,7 +304,7 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn c
 		select {
 		case <-ctx.Done():
 			// If the context is cancelled, stop the message loop
-			sysAp.logger.Log("context cancelled, stopping message loop")
+			sysAp.config.Logger.Log("context cancelled, stopping message loop")
 			return nil
 		default:
 			// Read messages from the web socket
@@ -247,12 +321,12 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn c
 
 			// Check if the message type is text
 			if messageType != websocket.TextMessage {
-				sysAp.logger.Warn("received non-text message from web socket", "type", messageType, "message", string(message))
+				sysAp.config.Logger.Warn("received non-text message from web socket", "type", messageType, "message", string(message))
 				continue
 			}
 
 			// Pipe the message to the message handler
-			sysAp.logger.Debug("received text message from web socket")
+			sysAp.config.Logger.Debug("received text message from web socket")
 			sysAp.webSocketMessageChannel <- message
 		}
 	}
@@ -266,7 +340,7 @@ func (sysAp *SystemAccessPoint) webSocketMessageHandler() {
 
 	// Verify that the webSocketMessageChannel is not nil
 	if sysAp.webSocketMessageChannel == nil {
-		sysAp.logger.Error("webSocketMessageChannel is nil, cannot start message handler")
+		sysAp.config.Logger.Error("webSocketMessageChannel is nil, cannot start message handler")
 		return
 	}
 
@@ -276,7 +350,7 @@ func (sysAp *SystemAccessPoint) webSocketMessageHandler() {
 	}
 
 	// If the channel is closed, exit the loop
-	sysAp.logger.Log("webSocketMessageChannel closed, stopping message handler")
+	sysAp.config.Logger.Log("webSocketMessageChannel closed, stopping message handler")
 }
 
 func (sysAp *SystemAccessPoint) webSocketKeepaliveLoop(conn connection, interval time.Duration) {
@@ -286,7 +360,7 @@ func (sysAp *SystemAccessPoint) webSocketKeepaliveLoop(conn connection, interval
 
 	// Verify that the messageReceivedChannel is not nil
 	if sysAp.messageReceivedChannel == nil {
-		sysAp.logger.Error("messageReceivedChannel is nil, cannot start keepalive loop")
+		sysAp.config.Logger.Error("messageReceivedChannel is nil, cannot start keepalive loop")
 		return
 	}
 
@@ -299,19 +373,19 @@ func (sysAp *SystemAccessPoint) webSocketKeepaliveLoop(conn connection, interval
 		case _, ok := <-sysAp.messageReceivedChannel:
 			if ok {
 				// Reset the timer when a message is received
-				sysAp.logger.Debug("message received, resetting keepalive timer")
+				sysAp.config.Logger.Debug("message received, resetting keepalive timer")
 				timer.Reset(interval)
 			} else {
 				// If the channel is closed, exit the loop
-				sysAp.logger.Log("messageReceivedChannel closed, stopping keepalive")
+				sysAp.config.Logger.Log("messageReceivedChannel closed, stopping keepalive")
 				return
 			}
 		case <-timer.C:
 			// Send a ping message to the server
-			sysAp.logger.Log("keepalive timer expired, sending ping message...")
+			sysAp.config.Logger.Log("keepalive timer expired, sending ping message...")
 			err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(3*time.Second))
 			if err != nil {
-				sysAp.logger.Error("failed to send ping message", "error", err)
+				sysAp.config.Logger.Error("failed to send ping message", "error", err)
 				sysAp.emitError(err)
 				return
 			}
@@ -332,14 +406,14 @@ func (sysAp *SystemAccessPoint) processMessage(message []byte) {
 	err := json.Unmarshal(message, &msg)
 
 	if err != nil {
-		sysAp.logger.Error("failed to unmarshal message", "error", err)
+		sysAp.config.Logger.Error("failed to unmarshal message", "error", err)
 		sysAp.emitError(err)
 		return
 	}
 
 	// Check if the message is empty
 	if len(msg[models.EmptyUUID].Datapoints) == 0 {
-		sysAp.logger.Warn("web socket message has no datapoints")
+		sysAp.config.Logger.Warn("web socket message has no datapoints")
 		return
 	}
 
@@ -347,12 +421,12 @@ func (sysAp *SystemAccessPoint) processMessage(message []byte) {
 	for key, datapoint := range msg[models.EmptyUUID].Datapoints {
 		// Check if the key matches the expected format
 		if !sysAp.datapointRegex.MatchString(key) {
-			sysAp.logger.Warn(`Ignored datapoint with invalid key format`, "key", key)
+			sysAp.config.Logger.Warn(`Ignored datapoint with invalid key format`, "key", key)
 			continue
 		}
 
 		// Log the datapoint update
-		sysAp.logger.Log("data point update",
+		sysAp.config.Logger.Log("data point update",
 			"device", sysAp.datapointRegex.FindStringSubmatch(key)[1],
 			"channel", sysAp.datapointRegex.FindStringSubmatch(key)[2],
 			"datapoint", sysAp.datapointRegex.FindStringSubmatch(key)[3],
@@ -369,7 +443,7 @@ func (sysAp *SystemAccessPoint) processMessage(message []byte) {
 //
 // Possible errors include network issues, non-2xx HTTP responses, or unmarshalling errors.
 func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error) {
-	resp, err := sysAp.client.R().Get(sysAp.GetUrl("configuration"))
+	resp, err := sysAp.config.Client.R().Get(sysAp.GetUrl("configuration"))
 
 	return deserializeRestResponse[models.Configuration](sysAp, resp, err, "failed to get configuration")
 }
@@ -382,7 +456,7 @@ func (sysAp *SystemAccessPoint) GetConfiguration() (*models.Configuration, error
 //   - *models.DeviceList: A pointer to the DeviceList model containing the list of devices.
 //   - error: An error if the request fails or the response contains an error.
 func (sysAp *SystemAccessPoint) GetDeviceList() (*models.DeviceList, error) {
-	resp, err := sysAp.client.R().Get(sysAp.GetUrl("devicelist"))
+	resp, err := sysAp.config.Client.R().Get(sysAp.GetUrl("devicelist"))
 
 	return deserializeRestResponse[models.DeviceList](sysAp, resp, err, "failed to get device list")
 }
@@ -391,7 +465,7 @@ func (sysAp *SystemAccessPoint) GetDeviceList() (*models.DeviceList, error) {
 // It sends a GET request to the appropriate endpoint and parses the response into a DeviceResponse model.
 // Returns a pointer to the DeviceResponse and an error if the request fails or the response cannot be parsed.
 func (sysAp *SystemAccessPoint) GetDevice(serial string) (*models.DeviceResponse, error) {
-	resp, err := sysAp.client.R().
+	resp, err := sysAp.config.Client.R().
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial}).
 		Get(sysAp.GetUrl("device/{uuid}/{serial}"))
 
@@ -413,7 +487,7 @@ func (sysAp *SystemAccessPoint) GetDevice(serial string) (*models.DeviceResponse
 //	*models.Datapoint - The retrieved datapoint object.
 //	error             - An error if the request or parsing fails.
 func (sysAp *SystemAccessPoint) GetDatapoint(serial string, channel string, datapoint string) (*models.GetDataPointResponse, error) {
-	resp, err := sysAp.client.R().
+	resp, err := sysAp.config.Client.R().
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial, "channel": channel, "datapoint": datapoint}).
 		Get(sysAp.GetUrl("datapoint/{uuid}/{serial}.{channel}.{datapoint}"))
 
@@ -435,7 +509,7 @@ func (sysAp *SystemAccessPoint) GetDatapoint(serial string, channel string, data
 //	*models.SetDataPointResponse - The response from the SysAP after setting the datapoint.
 //	error                        - An error if the request fails or the response cannot be parsed.
 func (sysAp *SystemAccessPoint) SetDatapoint(serial string, channel string, datapoint string, value string) (*models.SetDataPointResponse, error) {
-	resp, err := sysAp.client.R().
+	resp, err := sysAp.config.Client.R().
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "serial": serial, "channel": channel, "datapoint": datapoint}).
 		SetBody(value).
 		Put(sysAp.GetUrl("datapoint/{uuid}/{serial}.{channel}.{datapoint}"))
@@ -456,7 +530,7 @@ func (sysAp *SystemAccessPoint) SetDatapoint(serial string, channel string, data
 //   - *models.DeviceResponse: The response from the device if the action is successful.
 //   - error: An error if the request fails or the response cannot be parsed.
 func (sysAp *SystemAccessPoint) TriggerProxyDevice(class string, serial string, action string) (*models.DeviceResponse, error) {
-	resp, err := sysAp.client.R().
+	resp, err := sysAp.config.Client.R().
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "class": class, "serial": serial, "action": action}).
 		Get(sysAp.GetUrl("proxydevice/{uuid}/{class}/{serial}/action/{action}"))
 
@@ -475,7 +549,7 @@ func (sysAp *SystemAccessPoint) TriggerProxyDevice(class string, serial string, 
 //   - *models.DeviceResponse: The response from the device if the operation is successful.
 //   - error: An error if the request fails or the response cannot be parsed.
 func (sysAp *SystemAccessPoint) SetProxyDeviceValue(class string, serial string, value string) (*models.DeviceResponse, error) {
-	resp, err := sysAp.client.R().
+	resp, err := sysAp.config.Client.R().
 		SetPathParams(map[string]string{"uuid": sysAp.UUID, "class": class, "serial": serial, "value": value}).
 		Put(sysAp.GetUrl("proxydevice/{uuid}/{class}/{serial}/value/{value}"))
 
@@ -485,19 +559,19 @@ func (sysAp *SystemAccessPoint) SetProxyDeviceValue(class string, serial string,
 func deserializeRestResponse[T any](sysAp *SystemAccessPoint, resp *resty.Response, err error, errorMessage string) (*T, error) {
 	// Check for errors
 	if err != nil {
-		sysAp.logger.Error(errorMessage, "error", err)
+		sysAp.config.Logger.Error(errorMessage, "error", err)
 		sysAp.emitError(err)
 		return nil, err
 	}
 
 	if resp.IsError() {
-		sysAp.logger.Error(errorMessage, "status", resp.Status(), "body", resp.String())
+		sysAp.config.Logger.Error(errorMessage, "status", resp.Status(), "body", resp.String())
 		return nil, fmt.Errorf("%s: %s", errorMessage, resp.String())
 	}
 
 	var object T
 	if err := json.Unmarshal(resp.Body(), &object); err != nil {
-		sysAp.logger.Error("failed to parse response body", "error", err)
+		sysAp.config.Logger.Error("failed to parse response body", "error", err)
 		sysAp.emitError(err)
 		return nil, err
 	}

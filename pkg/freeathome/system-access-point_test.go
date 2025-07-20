@@ -15,7 +15,7 @@ func TestSystemAccessPointDefaultLogger(t *testing.T) {
 	slog.SetDefault(slog.New(handler))
 
 	// Create a SystemAccessPoint with the default logger
-	NewSystemAccessPoint("localhost", "user", "password", false, false, nil)
+	NewSystemAccessPointWithDefaults("localhost", "user", "password")
 
 	// Check if the log output contains the expected message
 	logOutput := buf.String()
@@ -24,9 +24,30 @@ func TestSystemAccessPointDefaultLogger(t *testing.T) {
 	}
 }
 
+// TestNoConfigErrors tests that an error is returned when a nil config is passed to NewSystemAccessPoint.
+func TestNoConfigErrors(t *testing.T) {
+	sysap, err := NewSystemAccessPoint(nil)
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
+	if sysap != nil {
+		t.Errorf("Expected nil, got %v", sysap)
+	}
+}
+
+// TestMustNewSystemAccessPoint tests that MustNewSystemAccessPoint panics when a nil config is passed to NewSystemAccessPoint.
+func TestMustNewSystemAccessPoint(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Expected panic, got nil")
+		}
+	}()
+	MustNewSystemAccessPoint(nil)
+}
+
 // TestSystemAccessPointGetHostName tests the GetHostName method of SystemAccessPoint.
 func TestSystemAccessPointGetHostName(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	expected := "localhost"
 
 	actual := sysAp.GetHostName()
@@ -45,7 +66,7 @@ func TestSystemAccessPointGetHostName(t *testing.T) {
 
 // TestSystemAccessPointGetTlsEnabled tests the GetTlsEnabled method of SystemAccessPoint.
 func TestSystemAccessPointGetTlsEnabled(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	expected := true
 
 	actual := sysAp.GetTlsEnabled()
@@ -62,9 +83,47 @@ func TestSystemAccessPointGetTlsEnabled(t *testing.T) {
 	}
 }
 
+// TestSystemAccessPointGetSkipTLSVerify tests the GetSkipTLSVerify method of SystemAccessPoint.
+func TestSystemAccessPointGetSkipTLSVerify(t *testing.T) {
+	sysAp, buf, _ := setup(t, true, false)
+	expected := false
+
+	actual := sysAp.GetSkipTLSVerify()
+
+	// Check if the log output is empty
+	logOutput := buf.String()
+	if logOutput != "" {
+		t.Errorf("Expected no log output, got: %s", logOutput)
+	}
+
+	// Check if the actual skip TLS verify status matches the expected status
+	if actual != expected {
+		t.Errorf("Expected skip TLS verify '%v', got '%v'", expected, actual)
+	}
+}
+
+// TestSystemAccessPointGetSkipTLSVerifyEnabled tests the GetSkipTLSVerify method of SystemAccessPoint when skip TLS verify is enabled.
+func TestSystemAccessPointGetSkipTLSVerifyEnabled(t *testing.T) {
+	sysAp, buf, _ := setup(t, true, true)
+	expected := true
+
+	actual := sysAp.GetSkipTLSVerify()
+
+	// Check if the log output is empty
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "this is not recommended") {
+		t.Errorf("Expected log output to contain 'this is not recommended', got: %s", logOutput)
+	}
+
+	// Check if the actual skip TLS verify status matches the expected status
+	if actual != expected {
+		t.Errorf("Expected skip TLS verify '%v', got '%v'", expected, actual)
+	}
+}
+
 // TestSystemAccessPointGetVerboseErrors tests the GetVerboseErrors method of SystemAccessPoint.
 func TestSystemAccessPointGetVerboseErrors(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 	expected := false
 
 	actual := sysAp.GetVerboseErrors()
@@ -83,7 +142,7 @@ func TestSystemAccessPointGetVerboseErrors(t *testing.T) {
 
 // TestSystemAccessPointGetUrlWithoutTls tests the GetUrl method of SystemAccessPoint without TLS.
 func TestSystemAccessPointGetUrlWithoutTls(t *testing.T) {
-	sysAp, buf, _ := setup(t, false)
+	sysAp, buf, _ := setup(t, false, false)
 	expected := "http://localhost/fhapi/v1/api/rest/test123"
 	actual := sysAp.GetUrl("test123")
 
@@ -101,7 +160,7 @@ func TestSystemAccessPointGetUrlWithoutTls(t *testing.T) {
 
 // TestSystemAccessPointGetUrlWithTls tests the GetUrl method of SystemAccessPoint with TLS.
 func TestSystemAccessPointGetUrlWithTls(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 
 	actual := sysAp.GetUrl("test123")
 	expected := "https://localhost/fhapi/v1/api/rest/test123"
@@ -120,7 +179,7 @@ func TestSystemAccessPointGetUrlWithTls(t *testing.T) {
 
 // TestSystemAccessPointGetWebSocketUrlWithoutTls tests the getWebSocketUrl method of SystemAccessPoint without TLS.
 func TestSystemAccessPointGetWsUrlWithoutTls(t *testing.T) {
-	sysAp, buf, _ := setup(t, false)
+	sysAp, buf, _ := setup(t, false, false)
 
 	actual := sysAp.getWebSocketUrl()
 	expected := "ws://localhost/fhapi/v1/api/ws"
@@ -139,7 +198,7 @@ func TestSystemAccessPointGetWsUrlWithoutTls(t *testing.T) {
 
 // TestSystemAccessPointGetWebSocketUrlWithTls tests the getWebSocketUrl method of SystemAccessPoint with TLS.
 func TestSystemAccessPointGetWsUrlWithTls(t *testing.T) {
-	sysAp, buf, _ := setup(t, true)
+	sysAp, buf, _ := setup(t, true, false)
 
 	actual := sysAp.getWebSocketUrl()
 	expected := "wss://localhost/fhapi/v1/api/ws"
