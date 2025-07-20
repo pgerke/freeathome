@@ -107,9 +107,7 @@ func setup(config GetCommandConfig, configFile string) (*freeathome.SystemAccess
 	sysApConfig.TLSEnabled = config.TLSEnabled
 	sysApConfig.SkipTLSVerify = config.SkipTLSVerify
 	sysApConfig.Logger = logger
-	sysAp := freeathome.NewSystemAccessPoint(sysApConfig)
-
-	return sysAp, nil
+	return freeathome.NewSystemAccessPoint(sysApConfig)
 }
 
 // GetDeviceList retrieves and displays the device list

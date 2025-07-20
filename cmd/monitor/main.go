@@ -69,7 +69,7 @@ func run(ctx context.Context) int {
 	config := freeathome.NewConfig(host, user, password)
 	config.VerboseErrors = true
 	config.Logger = logger
-	sysAp := freeathome.NewSystemAccessPoint(config)
+	sysAp, _ := freeathome.NewSystemAccessPoint(config)
 
 	// Connect to the system access point websocket
 	sysAp.ConnectWebSocket(ctx, 30*time.Second) // TODO: make this configurable -> command line flag

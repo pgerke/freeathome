@@ -24,15 +24,15 @@ func TestSystemAccessPointDefaultLogger(t *testing.T) {
 	}
 }
 
-// TestNoConfigPanics tests that a panic occurs when a nil config is passed to NewSystemAccessPoint.
-func TestNoConfigPanics(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected panic, got nil")
-		}
-	}()
-
-	NewSystemAccessPoint(nil)
+// TestNoConfigErrors tests that an error is returned when a nil config is passed to NewSystemAccessPoint.
+func TestNoConfigErrors(t *testing.T) {
+	sysap, err := NewSystemAccessPoint(nil)
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
+	if sysap != nil {
+		t.Errorf("Expected nil, got %v", sysap)
+	}
 }
 
 // TestSystemAccessPointGetHostName tests the GetHostName method of SystemAccessPoint.

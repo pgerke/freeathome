@@ -74,7 +74,7 @@ func setupMock(t *testing.T, v *viper.Viper, responseCode int, responseBody stri
 	config.TLSEnabled = true
 	config.Logger = logger
 	config.Client = client
-	sysAp := freeathome.NewSystemAccessPoint(config)
+	sysAp, _ := freeathome.NewSystemAccessPoint(config)
 
 	return sysAp, nil, nil
 }

@@ -77,9 +77,9 @@ type SystemAccessPoint struct {
 }
 
 // NewSystemAccessPoint creates a new SystemAccessPoint with the specified configuration.
-func NewSystemAccessPoint(config *Config) *SystemAccessPoint {
+func NewSystemAccessPoint(config *Config) (*SystemAccessPoint, error) {
 	if config == nil {
-		panic("config cannot be nil")
+		return nil, errors.New("config cannot be nil")
 	}
 
 	// Set default logger if not provided
@@ -107,13 +107,14 @@ func NewSystemAccessPoint(config *Config) *SystemAccessPoint {
 		webSocketMessageChannel: nil,
 		messageReceivedChannel:  nil,
 		datapointRegex:          regexp.MustCompile(models.DatapointPattern),
-	}
+	}, nil
 }
 
 // NewSystemAccessPointWithDefaults creates a new SystemAccessPoint with minimal configuration
 func NewSystemAccessPointWithDefaults(hostname, username, password string) *SystemAccessPoint {
 	config := NewConfig(hostname, username, password)
-	return NewSystemAccessPoint(config)
+	sysap, _ := NewSystemAccessPoint(config)
+	return sysap
 }
 
 // emitError is a helper function to emit errors using the onError callback.
