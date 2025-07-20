@@ -35,6 +35,16 @@ func TestNoConfigErrors(t *testing.T) {
 	}
 }
 
+// TestMustNewSystemAccessPoint tests that MustNewSystemAccessPoint panics when a nil config is passed to NewSystemAccessPoint.
+func TestMustNewSystemAccessPoint(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Expected panic, got nil")
+		}
+	}()
+	MustNewSystemAccessPoint(nil)
+}
+
 // TestSystemAccessPointGetHostName tests the GetHostName method of SystemAccessPoint.
 func TestSystemAccessPointGetHostName(t *testing.T) {
 	sysAp, buf, _ := setup(t, true, false)

@@ -74,9 +74,8 @@ func setupMock(t *testing.T, v *viper.Viper, responseCode int, responseBody stri
 	config.TLSEnabled = true
 	config.Logger = logger
 	config.Client = client
-	sysAp, _ := freeathome.NewSystemAccessPoint(config)
 
-	return sysAp, nil, nil
+	return freeathome.MustNewSystemAccessPoint(config), nil, nil
 }
 
 // MockRoundTripper is a mock implementation of http.RoundTripper for testing purposes.

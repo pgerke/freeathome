@@ -110,11 +110,22 @@ func NewSystemAccessPoint(config *Config) (*SystemAccessPoint, error) {
 	}, nil
 }
 
+// MustNewSystemAccessPoint creates a new SystemAccessPoint with the specified configuration.
+// It panics if an error occurs.
+func MustNewSystemAccessPoint(config *Config) *SystemAccessPoint {
+	sysap, err := NewSystemAccessPoint(config)
+	// The error can only occur if the config is nil, which is considered a programming error.
+	// If you are not sure if the config is nil, use NewSystemAccessPoint instead.
+	if err != nil {
+		panic(err)
+	}
+	return sysap
+}
+
 // NewSystemAccessPointWithDefaults creates a new SystemAccessPoint with minimal configuration
 func NewSystemAccessPointWithDefaults(hostname, username, password string) *SystemAccessPoint {
 	config := NewConfig(hostname, username, password)
-	sysap, _ := NewSystemAccessPoint(config)
-	return sysap
+	return MustNewSystemAccessPoint(config)
 }
 
 // emitError is a helper function to emit errors using the onError callback.
