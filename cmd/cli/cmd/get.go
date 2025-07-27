@@ -84,44 +84,52 @@ func init() {
 
 func runGetDeviceList(cmd *cobra.Command, args []string) error {
 	return cli.GetDeviceList(cli.GetCommandConfig{
-		Viper:         viper.GetViper(),
-		TLSEnabled:    tlsEnabled,
-		SkipTLSVerify: skipTLSVerify,
-		LogLevel:      logLevel,
-		OutputFormat:  outputFormat,
-		Prettify:      prettify,
+		CommandConfig: cli.CommandConfig{
+			Viper:         viper.GetViper(),
+			TLSEnabled:    tlsEnabled,
+			SkipTLSVerify: skipTLSVerify,
+			LogLevel:      logLevel,
+		},
+		OutputFormat: outputFormat,
+		Prettify:     prettify,
 	})
 }
 
 func runGetConfiguration(cmd *cobra.Command, args []string) error {
 	return cli.GetConfiguration(cli.GetCommandConfig{
-		Viper:         viper.GetViper(),
-		TLSEnabled:    tlsEnabled,
-		SkipTLSVerify: skipTLSVerify,
-		LogLevel:      logLevel,
-		OutputFormat:  outputFormat,
-		Prettify:      prettify,
+		CommandConfig: cli.CommandConfig{
+			Viper:         viper.GetViper(),
+			TLSEnabled:    tlsEnabled,
+			SkipTLSVerify: skipTLSVerify,
+			LogLevel:      logLevel,
+		},
+		OutputFormat: outputFormat,
+		Prettify:     prettify,
 	})
 }
 
 func runGetDevice(cmd *cobra.Command, args []string) error {
 	return cli.GetDevice(cli.GetCommandConfig{
-		Viper:         viper.GetViper(),
-		TLSEnabled:    tlsEnabled,
-		SkipTLSVerify: skipTLSVerify,
-		LogLevel:      logLevel,
-		OutputFormat:  outputFormat,
-		Prettify:      prettify,
+		CommandConfig: cli.CommandConfig{
+			Viper:         viper.GetViper(),
+			TLSEnabled:    tlsEnabled,
+			SkipTLSVerify: skipTLSVerify,
+			LogLevel:      logLevel,
+		},
+		OutputFormat: outputFormat,
+		Prettify:     prettify,
 	}, args[0])
 }
 
 func runGetDatapoint(cmd *cobra.Command, args []string) error {
 	return cli.GetDatapoint(cli.GetCommandConfig{
-		Viper:         viper.GetViper(),
-		TLSEnabled:    tlsEnabled,
-		SkipTLSVerify: skipTLSVerify,
-		LogLevel:      logLevel,
-		OutputFormat:  outputFormat,
-		Prettify:      prettify,
+		CommandConfig: cli.CommandConfig{
+			Viper:         viper.GetViper(),
+			TLSEnabled:    tlsEnabled,
+			SkipTLSVerify: skipTLSVerify,
+			LogLevel:      logLevel,
+		},
+		OutputFormat: outputFormat,
+		Prettify:     prettify,
 	}, args[0], args[1], args[2])
 }

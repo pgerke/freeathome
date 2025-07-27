@@ -10,6 +10,8 @@ A client library for the BUSCH-JAEGER free@home local API implemented in Golang.
 
 ## Installation
 
+### Library Usage
+
 To use this library in your own Go project, make sure your project is using Go modules. Then, run the following command to add the dependency:
 
 ```sh
@@ -23,6 +25,29 @@ import "github.com/pgerke/freeathome"
 ```
 
 This will give you access to the public API client and related utilities for interacting with a local free\@home SysAP.
+
+### CLI Tool
+
+The project also includes a command-line interface (CLI) tool for interacting with free@home systems. To build and use the CLI:
+
+```sh
+# Build the CLI tool with proper version and commit information
+make cli-build
+
+# Configure your system access point
+./fh configure
+
+# Get device list
+./fh get devicelist
+
+# Monitor real-time events
+./fh monitor
+
+# Set a datapoint
+./fh set datapoint [serial] [channel] [datapoint] [value]
+```
+
+For more information about available commands, run `./fh --help`.
 
 ## Features
 

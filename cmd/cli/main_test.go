@@ -7,6 +7,16 @@ import (
 	internal "github.com/pgerke/freeathome/internal"
 )
 
+// TestCLIMain tests the main function of the CLI package if the environment variable RUN_MAIN is set to "1".
+func TestCLIMain(t *testing.T) {
+	if os.Getenv("RUN_MAIN") != "1" {
+		t.Skip("Skipping main test")
+		return
+	}
+	t.Logf("Running main test")
+	main()
+}
+
 // TestMainVersionSetting tests that the version and commit are set correctly.
 func TestMainVersionSetting(t *testing.T) {
 	if version != "debug" {

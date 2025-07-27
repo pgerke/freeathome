@@ -219,7 +219,7 @@ func TestSetDatapoint(t *testing.T) {
 			sysAp, _, _ := setupMock(t, v, tt.responseCode, tt.responseBody)
 
 			// Override the setupFunc to use the mock SystemAccessPoint
-			setupFunc = func(config GetCommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
+			setupFunc = func(config CommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
 				return sysAp, nil
 			}
 			defer func() {
@@ -234,12 +234,14 @@ func TestSetDatapoint(t *testing.T) {
 
 			// Test SetDatapoint function
 			err := SetDatapoint(SetCommandConfig{
-				Viper:         v,
-				TLSEnabled:    false,
-				SkipTLSVerify: false,
-				LogLevel:      "info",
-				OutputFormat:  tt.outputFormat,
-				Prettify:      tt.prettify,
+				CommandConfig: CommandConfig{
+					Viper:         v,
+					TLSEnabled:    false,
+					SkipTLSVerify: false,
+					LogLevel:      "info",
+				},
+				OutputFormat: tt.outputFormat,
+				Prettify:     tt.prettify,
 			}, tt.serial, tt.channel, tt.datapoint, tt.value)
 
 			// Close pipe and read output
@@ -283,12 +285,14 @@ password: test-pass`
 
 	// Test SetDatapoint function - should fail due to invalid YAML
 	err = SetDatapoint(SetCommandConfig{
-		Viper:         v,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         v,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	}, "ABB7F595EC47", "ch0000", "idp0000", "1")
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
@@ -299,12 +303,14 @@ password: test-pass`
 func TestSetDatapointWithNilViper(t *testing.T) {
 	// Test SetDatapoint function with nil viper
 	err := SetDatapoint(SetCommandConfig{
-		Viper:         nil,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         nil,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	}, "ABB7F595EC47", "ch0000", "idp0000", "1")
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
@@ -318,12 +324,14 @@ func TestSetDatapointFunctionExists(t *testing.T) {
 
 	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
 	err := SetDatapoint(SetCommandConfig{
-		Viper:         v,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         v,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	}, "ABB7F595EC47", "ch0000", "idp0000", "1")
 	// We expect this to fail due to network/connection issues, but the function should exist
 	if err == nil {
@@ -336,12 +344,14 @@ func TestSetDatapointFunctionExists(t *testing.T) {
 // TestSetCommandConfigConversion tests that SetCommandConfig can be converted to GetCommandConfig
 func TestSetCommandConfigConversion(t *testing.T) {
 	setConfig := SetCommandConfig{
-		Viper:         viper.New(),
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "debug",
-		OutputFormat:  "json",
-		Prettify:      true,
+		CommandConfig: CommandConfig{
+			Viper:         viper.New(),
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "debug",
+		},
+		OutputFormat: "json",
+		Prettify:     true,
 	}
 
 	getConfig := GetCommandConfig(setConfig)
@@ -425,7 +435,7 @@ func TestSetDatapointWithEmptyValues(t *testing.T) {
 			sysAp, _, _ := setupMock(t, v, http.StatusOK, responseBody)
 
 			// Override the setupFunc to use the mock SystemAccessPoint
-			setupFunc = func(config GetCommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
+			setupFunc = func(config CommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
 				return sysAp, nil
 			}
 			defer func() {
@@ -434,12 +444,14 @@ func TestSetDatapointWithEmptyValues(t *testing.T) {
 
 			// Test SetDatapoint function
 			err := SetDatapoint(SetCommandConfig{
-				Viper:         v,
-				TLSEnabled:    false,
-				SkipTLSVerify: false,
-				LogLevel:      "info",
-				OutputFormat:  "text",
-				Prettify:      false,
+				CommandConfig: CommandConfig{
+					Viper:         v,
+					TLSEnabled:    false,
+					SkipTLSVerify: false,
+					LogLevel:      "info",
+				},
+				OutputFormat: "text",
+				Prettify:     false,
 			}, tt.serial, tt.channel, tt.datapoint, tt.value)
 
 			if tt.expectError {
@@ -506,7 +518,7 @@ func TestSetDatapointWithSpecialCharacters(t *testing.T) {
 			sysAp, _, _ := setupMock(t, v, http.StatusOK, tt.responseBody)
 
 			// Override the setupFunc to use the mock SystemAccessPoint
-			setupFunc = func(config GetCommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
+			setupFunc = func(config CommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
 				return sysAp, nil
 			}
 			defer func() {
@@ -515,12 +527,14 @@ func TestSetDatapointWithSpecialCharacters(t *testing.T) {
 
 			// Test SetDatapoint function
 			err := SetDatapoint(SetCommandConfig{
-				Viper:         v,
-				TLSEnabled:    false,
-				SkipTLSVerify: false,
-				LogLevel:      "info",
-				OutputFormat:  "text",
-				Prettify:      false,
+				CommandConfig: CommandConfig{
+					Viper:         v,
+					TLSEnabled:    false,
+					SkipTLSVerify: false,
+					LogLevel:      "info",
+				},
+				OutputFormat: "text",
+				Prettify:     false,
 			}, tt.serial, tt.channel, tt.datapoint, tt.value)
 
 			if tt.expectError {

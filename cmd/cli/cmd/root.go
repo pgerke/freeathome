@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"github.com/pgerke/freeathome/internal/cli"
 	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "freehome",
+	Use:   cli.MustExecutableName(),
 	Short: "Interact with ABB free@home devices using the local API",
 	Long:  `A CLI tool to interact with ABB free@home devices using the local API.`,
 }

@@ -17,7 +17,7 @@ repos:
       - id: commitizen
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: v2.1.6
+    rev: v2.3.0
     hooks:
       - id: golangci-lint
 
@@ -30,6 +30,6 @@ repos:
       - id: go-test-mod
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.27.2
+    rev: v8.28.0
     hooks:
       - id: gitleaks

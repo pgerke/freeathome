@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestSystemAccessPointDefaultLogger tests the default logger functionality of SystemAccessPoint.
@@ -212,5 +213,31 @@ func TestSystemAccessPointGetWsUrlWithTls(t *testing.T) {
 	// Check if the actual URL matches the expected URL
 	if actual != expected {
 		t.Errorf("Expected URL '%s', got '%s'", expected, actual)
+	}
+}
+
+// TestSystemAccessPointCalculateBackoffDuration tests the calculateBackoffDuration method of SystemAccessPoint.
+func TestSystemAccessPointCalculateBackoffDuration(t *testing.T) {
+	sysAp, _, _ := setup(t, true, false)
+
+	// Test exponential backoff calculation
+	testCases := []struct {
+		attempt  int
+		expected time.Duration
+	}{
+		{1, 2 * time.Second},   // 1s * 2^1 = 2s
+		{2, 4 * time.Second},   // 1s * 2^2 = 4s
+		{3, 8 * time.Second},   // 1s * 2^3 = 8s
+		{4, 16 * time.Second},  // 1s * 2^4 = 16s
+		{5, 30 * time.Second},  // Capped at 30s
+		{6, 30 * time.Second},  // Capped at 30s
+		{10, 30 * time.Second}, // Capped at 30s
+	}
+
+	for _, tc := range testCases {
+		result := sysAp.calculateBackoffDuration(tc.attempt)
+		if result != tc.expected {
+			t.Errorf("For attempt %d, expected %v, got %v", tc.attempt, tc.expected, result)
+		}
 	}
 }
