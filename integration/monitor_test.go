@@ -18,9 +18,8 @@ const coverageDirectory = "./../coverage-cli"
 
 // TestMonitorMissingEnvs verifies the monitor's behavior when required environment variables are missing.
 func TestMonitorMissingEnvs(t *testing.T) {
-	t.Skip("Unsure if still needed!")
 	// Run with missing env
-	run := exec.Command(bin, "-test.run=TestCLIMain", "monitor")
+	run := exec.Command(bin, "monitor", "-test.run=TestCLIMain")
 	run.Env = append(os.Environ(), "RUN_MAIN=1", "GOCOVERDIR="+coverageDirectory)
 
 	output, err := run.CombinedOutput()
@@ -48,7 +47,7 @@ func TestMonitorSuccessfulRun(t *testing.T) {
 	defer shutdown()
 
 	// Run the monitor
-	run := exec.Command(bin, "-test.run=TestCLIMain", "monitor")
+	run := exec.Command(bin, "monitor", "-test.run=TestCLIMain")
 	run.Env = append(os.Environ(),
 		"RUN_MAIN=1",
 		"GOCOVERDIR="+coverageDirectory,
