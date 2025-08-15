@@ -21,6 +21,16 @@ cli-build:
 	@go build -ldflags "-X 'main.version=$(VERSION)' -X 'main.commit=$(COMMIT)'" -o fh ./cmd/cli/main.go
 	@chmod +x fh
 
+# Build the Docker image for the free@home CLI
+cli-build-docker:
+	@echo "Building Docker image for free@home CLI v$(VERSION) from $(COMMIT) with tag $(TAG)."
+	@docker build --build-arg version=$(VERSION) --build-arg commit=$(COMMIT) -t ghcr.io/pgerke/freeathome-cli:${TAG} -f ./cmd/cli.dockerfile .
+
+# Build the multi-arch Docker image for the free@home CLI
+cli-build-docker-multiarch:
+	@echo "Building multi-arch Docker image for free@home CLI v$(VERSION) from $(COMMIT) with tag $(TAG)."
+	@docker buildx build --platform linux/amd64,linux/arm64 --build-arg version=$(VERSION) --build-arg commit=$(COMMIT) -t ghcr.io/pgerke/freeathome-cli:${TAG} -f ./cmd/cli.dockerfile --push .
+
 # Run the free@home CLI integration tests
 cli-integration-test:
 	@echo "Running integration tests for free@home CLI v$(VERSION)-$(COMMIT)"
