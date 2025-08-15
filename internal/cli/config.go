@@ -142,12 +142,11 @@ func initConfig(v *viper.Viper) {
 
 	// Set environment variable prefix
 	v.SetEnvPrefix("FREEATHOME")
-	v.AutomaticEnv()
 
 	// Map environment variables to config keys
-	_ = v.BindEnv("hostname", "HOSTNAME")
-	_ = v.BindEnv("username", "USERNAME")
-	_ = v.BindEnv("password", "PASSWORD")
+	_ = v.BindEnv("hostname")
+	_ = v.BindEnv("username")
+	_ = v.BindEnv("password")
 
 	// Read config file if it exists
 	if err := v.ReadInConfig(); err != nil {
