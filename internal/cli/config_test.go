@@ -8,6 +8,31 @@ import (
 	"github.com/spf13/viper"
 )
 
+// TestGetExecutableName tests the GetExecutableName function
+func TestGetExecutableName(t *testing.T) {
+	executableName, err := GetExecutableName()
+	if err != nil {
+		t.Fatalf("Failed to get executable name: %v", err)
+	}
+	if executableName != "cli.test" {
+		t.Errorf("Expected executable name to be 'cli.test', got '%s'", executableName)
+	}
+}
+
+// TestMustExecutableName tests the MustExecutableName function
+func TestMustExecutableName(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("MustExecutableName() panicked: %v", r)
+		}
+	}()
+
+	executableName := MustExecutableName()
+	if executableName != "cli.test" {
+		t.Errorf("Expected executable name to be 'cli.test', got '%s'", executableName)
+	}
+}
+
 // TestConfigStruct tests the Config struct fields
 func TestConfigStruct(t *testing.T) {
 	cfg := &Config{

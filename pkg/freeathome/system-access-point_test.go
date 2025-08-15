@@ -216,6 +216,46 @@ func TestSystemAccessPointGetWsUrlWithTls(t *testing.T) {
 	}
 }
 
+// TestSystemAccessPointGetSetMaxReconnectionAttempts tests the GetMaxReconnectionAttempts and SetMaxReconnectionAttempts methods of SystemAccessPoint.
+func TestSystemAccessPointGetSetMaxReconnectionAttempts(t *testing.T) {
+	sysAp, _, _ := setup(t, true, false)
+
+	// Test initial value
+	expected := 3
+	actual := sysAp.GetMaxReconnectionAttempts()
+	if actual != expected {
+		t.Errorf("Expected max reconnection attempts to be %d, got %d", expected, actual)
+	}
+
+	// Test setting a new value
+	expected = 5
+	sysAp.SetMaxReconnectionAttempts(expected)
+	actual = sysAp.GetMaxReconnectionAttempts()
+	if actual != expected {
+		t.Errorf("Expected max reconnection attempts to be %d, got %d", expected, actual)
+	}
+}
+
+// TestSystemAccessPointGetSetExponentialBackoffEnabled tests the GetExponentialBackoffEnabled and SetExponentialBackoffEnabled methods of SystemAccessPoint.
+func TestSystemAccessPointGetSetExponentialBackoffEnabled(t *testing.T) {
+	sysAp, _, _ := setup(t, true, false)
+
+	// Test initial value
+	expected := true
+	actual := sysAp.GetExponentialBackoffEnabled()
+	if actual != expected {
+		t.Errorf("Expected exponential backoff enabled to be %v, got %v", expected, actual)
+	}
+
+	// Test setting a new value
+	expected = false
+	sysAp.SetExponentialBackoffEnabled(expected)
+	actual = sysAp.GetExponentialBackoffEnabled()
+	if actual != expected {
+		t.Errorf("Expected exponential backoff enabled to be %v, got %v", expected, actual)
+	}
+}
+
 // TestSystemAccessPointCalculateBackoffDuration tests the calculateBackoffDuration method of SystemAccessPoint.
 func TestSystemAccessPointCalculateBackoffDuration(t *testing.T) {
 	sysAp, _, _ := setup(t, true, false)

@@ -115,7 +115,7 @@ func TestSystemAccessPointWebSocketMessageHandlerMissingChannel(t *testing.T) {
 
 // TestSystemAccessPointConnectWebSocketSuccess tests the successful connection of the WebSocket.
 func TestSystemAccessPointConnectWebSocketSuccess(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	sysAp, _, records := setup(t, false, false)
@@ -159,7 +159,7 @@ func TestSystemAccessPointConnectWebSocketSuccess(t *testing.T) {
 
 // TestSystemAccessPointConnectWebSocketSkipTlsVerify tests the successful connection of the WebSocket with skip TLS verify.
 func TestSystemAccessPointConnectWebSocketSkipTlsVerify(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	sysAp, buf, records := setup(t, true, true)
@@ -208,7 +208,7 @@ func TestSystemAccessPointConnectWebSocketSkipTlsVerify(t *testing.T) {
 
 // TestSystemAccessPointConnectWebSocketContextCancelled tests the behavior when the context is cancelled.
 func TestSystemAccessPointConnectWebSocketContextCancelled(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	sysAp, _, records := setup(t, false, false)
 
@@ -272,7 +272,7 @@ func TestSystemAccessPointConnectWebSocketContextCancelled(t *testing.T) {
 
 // TestSystemAccessPointConnectWebSocketFailure tests the behavior when the WebSocket connection fails.
 func TestSystemAccessPointConnectWebSocketFailure(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	sysAp, buf, _ := setup(t, false, false)
@@ -290,6 +290,12 @@ func TestSystemAccessPointConnectWebSocketFailure(t *testing.T) {
 		}
 	}
 
+	// Get the initial reconnection attempts
+	reconnectionAttempts := sysAp.GetReconnectionAttempts()
+	if reconnectionAttempts != 0 {
+		t.Errorf("Expected reconnection attempts to be 0, got %d", reconnectionAttempts)
+	}
+
 	// Run ConnectWebSocket in a separate goroutine
 	go func() {
 		sysAp.ConnectWebSocket(ctx, 1*time.Hour)
@@ -298,6 +304,11 @@ func TestSystemAccessPointConnectWebSocketFailure(t *testing.T) {
 	// Wait for the context to be cancelled
 	<-ctx.Done()
 
+	reconnectionAttempts = sysAp.GetReconnectionAttempts()
+	if reconnectionAttempts != 1 {
+		t.Errorf("Expected reconnection attempts to be 1, got %d", reconnectionAttempts)
+	}
+
 	// Check the log output
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, "failed to connect to web socket") {
@@ -305,9 +316,52 @@ func TestSystemAccessPointConnectWebSocketFailure(t *testing.T) {
 	}
 }
 
+func TestSystemAccessPointConnectWebSocketMaxReconnectionAttempts(t *testing.T) {
+	sysAp, buf, _ := setup(t, false, false)
+	defer sysAp.waitGroup.Wait()
+
+	// Set the max reconnection attempts to 2
+	sysAp.SetMaxReconnectionAttempts(2)
+
+	// Set an invalid host name to simulate connection failure
+	sysAp.config.Hostname = "invalid-host"
+
+	// set up the error handler
+	errorCount := 0
+	sysAp.onError = func(err error) {
+		errorCount++
+	}
+
+	// Get the initial reconnection attempts
+	reconnectionAttempts := sysAp.GetReconnectionAttempts()
+	if reconnectionAttempts != 0 {
+		t.Errorf("Expected reconnection attempts to be 0, got %d", reconnectionAttempts)
+	}
+
+	// Run ConnectWebSocket
+	sysAp.ConnectWebSocket(t.Context(), 1*time.Hour)
+
+	// Verify the reconnection attempts
+	reconnectionAttempts = sysAp.GetReconnectionAttempts()
+	if reconnectionAttempts != 2 {
+		t.Errorf("Expected reconnection attempts to be 2, got %d", reconnectionAttempts)
+	}
+
+	// Verify the error count
+	if errorCount != 2 {
+		t.Errorf("Expected error count to be 2, got %d", errorCount)
+	}
+
+	// Check the log output
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "maximum reconnection attempts exceeded") {
+		t.Errorf("Expected log output to contain 'maximum reconnection attempts exceeded', got: %s", logOutput)
+	}
+}
+
 // TestSystemAccessPointWebSocketMessageLoopTextMessage tests the webSocketMessageLoop method for text messages.
 func TestSystemAccessPointWebSocketMessageLoopTextMessage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	sysAp, buf, _ := setup(t, true, false)
@@ -353,7 +407,7 @@ func TestSystemAccessPointWebSocketMessageLoopTextMessage(t *testing.T) {
 
 // TestSystemAccessPointWebSocketMessageLoopNonTextMessage tests the webSocketMessageLoop method for non-text messages.
 func TestSystemAccessPointWebSocketMessageLoopNonTextMessage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	sysAp, buf, _ := setup(t, true, false)
@@ -401,7 +455,7 @@ func TestSystemAccessPointWebSocketMessageLoopNonTextMessage(t *testing.T) {
 }
 
 func TestSystemAccessPointWebSocketMessageLoopMissingChannel(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	sysAp, buf, _ := setup(t, true, false)
