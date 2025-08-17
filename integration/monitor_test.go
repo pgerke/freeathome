@@ -19,7 +19,6 @@ const coverageDirectory = "./../coverage-cli"
 
 // TestMonitorMissingEnvs verifies the monitor's behavior when required environment variables are missing.
 func TestMonitorMissingEnvs(t *testing.T) {
-	t.Skip("Skipping missing envs test")
 	// Run with missing env
 	run := exec.Command(bin, "monitor")
 	run.Env = append(os.Environ(), "GOCOVERDIR="+coverageDirectory)
@@ -79,8 +78,8 @@ func TestMonitorSuccessfulRunInputKeypress(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not get stderr pipe: %v", err)
 	}
-	go io.Copy(os.Stdout, stdout)
-	go io.Copy(os.Stderr, stderr)
+	go io.Copy(t.Output(), stdout)
+	go io.Copy(t.Output(), stderr)
 
 	// Start the monitor
 	if err := run.Start(); err != nil {
@@ -153,8 +152,8 @@ func TestMonitorSuccessfulRunInterrupt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not get stderr pipe: %v", err)
 	}
-	go io.Copy(os.Stdout, stdout)
-	go io.Copy(os.Stderr, stderr)
+	go io.Copy(t.Output(), stdout)
+	go io.Copy(t.Output(), stderr)
 
 	// Start the monitor
 	if err := run.Start(); err != nil {
@@ -225,8 +224,8 @@ func TestMonitorSuccessfulRunForcedExit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not get stderr pipe: %v", err)
 	}
-	go io.Copy(os.Stdout, stdout)
-	go io.Copy(os.Stderr, stderr)
+	go io.Copy(t.Output(), stdout)
+	go io.Copy(t.Output(), stderr)
 
 	// Start the monitor
 	if err := run.Start(); err != nil {
