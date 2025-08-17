@@ -35,8 +35,8 @@ cli-build-docker-multiarch:
 cli-integration-test:
 	@echo "Running integration tests for free@home CLI v$(VERSION)-$(COMMIT)"
 	@rm -rf ./coverage-cli && mkdir -p ./coverage-cli
-	@go test -c -o cli-integration.test -covermode atomic ./cmd/cli
-	@go test -timeout 5s -tags integration integration/monitor_test.go
+	@go build -covermode atomic -coverpkg=./... -o cli-integration.test ./cmd/cli
+	@go test -timeout 10s -tags integration ./integration/
 	@go tool covdata textfmt -i coverage-cli -o cli-integration.coverage.out
 	@go tool cover -html=cli-integration.coverage.out -o cli-integration.coverage.html
 

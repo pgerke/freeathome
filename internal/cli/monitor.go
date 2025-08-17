@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -33,20 +34,44 @@ func Monitor(config MonitorCommandConfig) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
+	// Create error channel for the shutdown
+	shutdown := make(chan error, 1)
+
+	// Setup keypress handling for graceful shutdown
+	go func() {
+		reader := bufio.NewReader(os.Stdin)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				char, _, err := reader.ReadRune()
+				if err != nil {
+					break
+				}
+				if char == 'q' || char == 'Q' {
+					// Send SIGINT to trigger graceful shutdown
+					sigs <- syscall.SIGINT
+					return
+				}
+			}
+		}
+	}()
+
 	go func() {
 		// First signal triggers graceful shutdown
 		<-sigs
-		fmt.Println("Interrupt received, shutting down gracefully...")
-		fmt.Println("Press Ctrl+C again to force exit")
+		fmt.Println("Exit signal received, shutting down gracefully...")
+		fmt.Println("Press Ctrl+C to force exit")
 		cancel()
 
 		// Second signal triggers immediate, forced shutdown
 		<-sigs
-		fmt.Println("\nSecond interrupt received, shutting down immediately...")
-		os.Exit(1)
+		fmt.Println("\nSecond exit signal received, shutting down immediately...")
+		shutdown <- fmt.Errorf("forced shutdown requested")
 	}()
 
-	fmt.Println("Press Ctrl+C to exit")
+	fmt.Println("Press 'q' or Ctrl+C to exit")
 
 	// Set the maximum reconnection attempts
 	sysAp.SetMaxReconnectionAttempts(config.MaxReconnectionAttempts)
@@ -56,7 +81,15 @@ func Monitor(config MonitorCommandConfig) error {
 
 	// Connect to the system access point websocket
 	timeout := time.Duration(config.Timeout) * time.Second
-	sysAp.ConnectWebSocket(ctx, timeout)
+	go func() {
+		shutdown <- sysAp.ConnectWebSocket(ctx, timeout)
+	}()
+
+	// Handle both forced shutdown and WebSocket connection errors
+	err = <-shutdown
+	if err != nil && err != context.Canceled {
+		return err
+	}
 
 	return nil
 }

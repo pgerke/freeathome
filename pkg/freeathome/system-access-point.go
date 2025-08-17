@@ -248,7 +248,7 @@ func (sysAp *SystemAccessPoint) getWebSocketUrl() string {
 }
 
 // ConnectWebSocket establishes a web socket connection to the system access point.
-func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveInterval time.Duration) {
+func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveInterval time.Duration) error {
 	sysAp.reconnectionMutex.Lock()
 	sysAp.reconnectionAttempts = 0
 	sysAp.reconnectionMutex.Unlock()
@@ -262,7 +262,7 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveI
 		case <-ctx.Done():
 			// If the context is cancelled, stop the connection attempts
 			sysAp.config.Logger.Log("context cancelled, stopping web socket connection attempts")
-			return
+			return ctx.Err()
 		default:
 			// Check if we've exceeded the maximum reconnection attempts
 			sysAp.reconnectionMutex.Lock()
@@ -272,7 +272,7 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveI
 
 			if currentAttempts >= maxAttempts {
 				sysAp.config.Logger.Error("maximum reconnection attempts exceeded", "attempts", currentAttempts, "max", maxAttempts)
-				return
+				return errors.New("maximum reconnection attempts exceeded")
 			}
 
 			// Attempt to establish a web socket connection
@@ -311,7 +311,6 @@ func (sysAp *SystemAccessPoint) webSocketConnectionLoop(ctx context.Context, kee
 	// Create a custom dialer for WebSocket connection
 	dialer := websocket.DefaultDialer
 	if sysAp.config.TLSEnabled && sysAp.config.SkipTLSVerify {
-		sysAp.config.Logger.Warn("TLS is enabled but certificate verification is disabled, this is not recommended!")
 		dialer = &websocket.Dialer{
 			Proxy:            http.ProxyFromEnvironment,
 			HandshakeTimeout: 45 * time.Second,

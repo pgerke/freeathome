@@ -39,9 +39,6 @@ func TestSetupMonitorWithInvalidConfig(t *testing.T) {
 			SkipTLSVerify: false,
 			LogLevel:      "debug",
 		},
-		Timeout:                 30,
-		MaxReconnectionAttempts: 3,
-		ExponentialBackoff:      true,
 	}
 
 	// This should fail because no configuration is loaded
