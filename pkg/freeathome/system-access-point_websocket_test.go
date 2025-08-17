@@ -154,7 +154,10 @@ func TestSystemAccessPointConnectWebSocketSuccess(t *testing.T) {
 	}()
 
 	// Run ConnectWebSocket in a separate goroutine
-	sysAp.ConnectWebSocket(ctx, 1*time.Hour)
+	err := sysAp.ConnectWebSocket(ctx, 1*time.Hour)
+	if err != nil && err != context.Canceled {
+		t.Errorf("Expected no error, got: %v", err)
+	}
 }
 
 // TestSystemAccessPointConnectWebSocketSkipTlsVerify tests the successful connection of the WebSocket with skip TLS verify.
@@ -203,7 +206,10 @@ func TestSystemAccessPointConnectWebSocketSkipTlsVerify(t *testing.T) {
 	}()
 
 	// Run ConnectWebSocket in a separate goroutine
-	sysAp.ConnectWebSocket(ctx, 1*time.Hour)
+	err := sysAp.ConnectWebSocket(ctx, 1*time.Hour)
+	if err != nil && err != context.Canceled {
+		t.Errorf("Expected no error, got: %v", err)
+	}
 }
 
 // TestSystemAccessPointConnectWebSocketContextCancelled tests the behavior when the context is cancelled.
@@ -261,7 +267,10 @@ func TestSystemAccessPointConnectWebSocketContextCancelled(t *testing.T) {
 
 	// Run ConnectWebSocket in a separate goroutine
 	go func() {
-		sysAp.ConnectWebSocket(ctx, 1*time.Hour)
+		err := sysAp.ConnectWebSocket(ctx, 1*time.Hour)
+		if err != nil && err != context.Canceled {
+			t.Errorf("Expected no error, got: %v", err)
+		}
 	}()
 
 	// Wait for the expected records to be processed
@@ -298,7 +307,10 @@ func TestSystemAccessPointConnectWebSocketFailure(t *testing.T) {
 
 	// Run ConnectWebSocket in a separate goroutine
 	go func() {
-		sysAp.ConnectWebSocket(ctx, 1*time.Hour)
+		err := sysAp.ConnectWebSocket(ctx, 1*time.Hour)
+		if err != nil && err != context.Canceled {
+			t.Errorf("Expected no error, got: %v", err)
+		}
 	}()
 
 	// Wait for the context to be cancelled
@@ -339,7 +351,12 @@ func TestSystemAccessPointConnectWebSocketMaxReconnectionAttempts(t *testing.T) 
 	}
 
 	// Run ConnectWebSocket
-	sysAp.ConnectWebSocket(t.Context(), 1*time.Hour)
+	err := sysAp.ConnectWebSocket(t.Context(), 1*time.Hour)
+
+	// Verify error
+	if err == nil || err.Error() != "maximum reconnection attempts exceeded" {
+		t.Errorf("Expected error 'maximum reconnection attempts exceeded', got: %v", err)
+	}
 
 	// Verify the reconnection attempts
 	reconnectionAttempts = sysAp.GetReconnectionAttempts()
