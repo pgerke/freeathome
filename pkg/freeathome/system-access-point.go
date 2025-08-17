@@ -410,7 +410,13 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn c
 			}
 
 			// Signal that a message has been received
-			sysAp.messageReceivedChannel <- struct{}{}
+			select {
+			case sysAp.messageReceivedChannel <- struct{}{}:
+				// Message sent successfully
+			case <-ctx.Done():
+				// Context cancelled, exit immediately
+				return ctx.Err()
+			}
 
 			// Check if the message type is text
 			if messageType != websocket.TextMessage {
@@ -420,7 +426,13 @@ func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn c
 
 			// Pipe the message to the message handler
 			sysAp.config.Logger.Debug("received text message from web socket")
-			sysAp.webSocketMessageChannel <- message
+			select {
+			case sysAp.webSocketMessageChannel <- message:
+				// Message sent successfully
+			case <-ctx.Done():
+				// Context cancelled, exit immediately
+				return ctx.Err()
+			}
 		}
 	}
 }
