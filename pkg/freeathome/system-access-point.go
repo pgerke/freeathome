@@ -253,9 +253,6 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveI
 	sysAp.reconnectionAttempts = 0
 	sysAp.reconnectionMutex.Unlock()
 
-	// Wait for all processes to finish before returning
-	defer sysAp.waitGroup.Wait()
-
 	// Start the connection loop
 	for {
 		select {
