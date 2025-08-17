@@ -79,8 +79,8 @@ func TestMonitorSuccessfulRunInputKeypress(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not get stderr pipe: %v", err)
 	}
-	go io.Copy(t.Output(), stdout)
-	go io.Copy(t.Output(), stderr)
+	go io.Copy(os.Stdout, stdout)
+	go io.Copy(os.Stderr, stderr)
 
 	// Start the monitor
 	if err := run.Start(); err != nil {
@@ -153,8 +153,8 @@ func TestMonitorSuccessfulRunInterrupt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not get stderr pipe: %v", err)
 	}
-	go io.Copy(t.Output(), stdout)
-	go io.Copy(t.Output(), stderr)
+	go io.Copy(os.Stdout, stdout)
+	go io.Copy(os.Stderr, stderr)
 
 	// Start the monitor
 	if err := run.Start(); err != nil {
@@ -225,8 +225,8 @@ func TestMonitorSuccessfulRunForcedExit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not get stderr pipe: %v", err)
 	}
-	go io.Copy(t.Output(), stdout)
-	go io.Copy(t.Output(), stderr)
+	go io.Copy(os.Stdout, stdout)
+	go io.Copy(os.Stderr, stderr)
 
 	// Start the monitor
 	if err := run.Start(); err != nil {
