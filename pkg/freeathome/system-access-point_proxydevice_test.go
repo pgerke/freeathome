@@ -11,7 +11,7 @@ import (
 )
 
 func TestSystemAccessPointTriggerProxyDevice(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       loadTestResponseBody(t, "device.json"),
@@ -62,7 +62,7 @@ func TestSystemAccessPointTriggerProxyDevice(t *testing.T) {
 }
 
 func TestSystemAccessPointTriggerProxyDeviceCallError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
 		Response: nil,
@@ -95,7 +95,7 @@ func TestSystemAccessPointTriggerProxyDeviceCallError(t *testing.T) {
 }
 
 func TestSystemAccessPointTriggerProxyDeviceErrorResponse(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Status:     "Internal Server Error",
@@ -145,7 +145,7 @@ func TestSystemAccessPointTriggerProxyDeviceErrorResponse(t *testing.T) {
 }
 
 func TestSystemAccessPointTriggerProxyDeviceUnmarshalError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(strings.NewReader(`{"00000000-0000-0000-0000-000000000000":{"devices":{"abcd12345":{"nativeId": 123}}}}`)),
@@ -182,7 +182,7 @@ func TestSystemAccessPointTriggerProxyDeviceUnmarshalError(t *testing.T) {
 }
 
 func TestSystemAccessPointSetProxyDeviceValue(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       loadTestResponseBody(t, "device.json"),
@@ -232,7 +232,7 @@ func TestSystemAccessPointSetProxyDeviceValue(t *testing.T) {
 }
 
 func TestSystemAccessPointSetProxyDeviceValueCallError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
 		Response: nil,
@@ -265,7 +265,7 @@ func TestSystemAccessPointSetProxyDeviceValueCallError(t *testing.T) {
 }
 
 func TestSystemAccessPointSetProxyDeviceValueErrorResponse(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Status:     "Internal Server Error",
@@ -315,7 +315,7 @@ func TestSystemAccessPointSetProxyDeviceValueErrorResponse(t *testing.T) {
 }
 
 func TestSystemAccessPointSetProxyDeviceValueUnmarshalError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(strings.NewReader(`{"00000000-0000-0000-0000-000000000000":{"devices":{"abcd12345":{"nativeId": 123}}}}`)),

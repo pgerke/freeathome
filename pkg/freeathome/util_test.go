@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -16,8 +17,8 @@ const expectedErrorGotValue = "Expected error '%s', got '%v'"
 const expectedNil = "Expected nil result"
 const unexpectedLogOutput = "Unexpected log output, got: %s"
 
-// setup initializes a SystemAccessPoint with a mock logger and returns it along with a buffer to capture log output.
-func setup(t *testing.T, tlsEnabled bool, skipTLSVerify bool) (*SystemAccessPoint, *bytes.Buffer, chan slog.Record) {
+// setupSysAp initializes a SystemAccessPoint with a mock logger and returns it along with a buffer to capture log output.
+func setupSysAp(t *testing.T, tlsEnabled bool, skipTLSVerify bool) (*SystemAccessPoint, *bytes.Buffer, chan slog.Record) {
 	t.Helper()
 
 	// Create a buffer to capture log output
@@ -39,6 +40,37 @@ func setup(t *testing.T, tlsEnabled bool, skipTLSVerify bool) (*SystemAccessPoin
 	config.SkipTLSVerify = skipTLSVerify
 	config.Logger = logger
 	return MustNewSystemAccessPoint(config), &buf, channelHandler.records
+}
+
+// setupSysApWebSocket initializes a SystemAccessPointWebSocket with a mock logger and returns it along with a buffer to capture log output.
+func setupSysApWebSocket(t *testing.T, tlsEnabled bool, skipTLSVerify bool) (*SystemAccessPointWebSocket, *bytes.Buffer, chan slog.Record) {
+	t.Helper()
+
+	// Create a buffer to capture log output
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+	// Create a channel handler to capture log records
+	channelHandler := &ChannelHandler{
+		next:    handler,
+		records: make(chan slog.Record, 100),
+	}
+	// Create the logger
+	logger := NewDefaultLogger(channelHandler)
+
+	// Create a SystemAccessPoint with the default logger
+	config := NewConfig("localhost", "user", "password")
+	config.TLSEnabled = tlsEnabled
+	config.SkipTLSVerify = skipTLSVerify
+	config.Logger = logger
+	sysAp := MustNewSystemAccessPoint(config)
+
+	// Create a SystemAccessPointWebSocket
+	return &SystemAccessPointWebSocket{
+		sysAp:     sysAp,
+		waitGroup: sync.WaitGroup{},
+	}, &buf, channelHandler.records
 }
 
 // MockRoundTripper is a mock implementation of http.RoundTripper for testing purposes.

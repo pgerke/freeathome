@@ -12,7 +12,7 @@ import (
 
 // TestSystemAccessPointGetConfiguration tests the GetConfiguration method of SystemAccessPoint.
 func TestSystemAccessPointGetConfiguration(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       loadTestResponseBody(t, "configuration.json"),
@@ -60,7 +60,7 @@ func TestSystemAccessPointGetConfiguration(t *testing.T) {
 
 // TestSystemAccessPointGetConfigurationCallError tests the GetConfiguration method of SystemAccessPoint
 func TestSystemAccessPointGetConfigurationCallError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	error := errors.New("Test Error")
 	roundtripper := &MockRoundTripper{
 		Response: nil,
@@ -93,7 +93,7 @@ func TestSystemAccessPointGetConfigurationCallError(t *testing.T) {
 
 // TestSystemAccessPointGetConfigurationErrorResponse tests the GetConfiguration method of SystemAccessPoint
 func TestSystemAccessPointGetConfigurationErrorResponse(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Status:     "Internal Server Error",
@@ -143,7 +143,7 @@ func TestSystemAccessPointGetConfigurationErrorResponse(t *testing.T) {
 
 // TestSystemAccessPointGetConfigurationUnmarshalError tests the GetConfiguration method of SystemAccessPoint
 func TestSystemAccessPointGetConfigurationUnmarshalError(t *testing.T) {
-	sysAp, buf, _ := setup(t, true, false)
+	sysAp, buf, _ := setupSysAp(t, true, false)
 	response := &http.Response{
 		StatusCode: http.StatusOK,
 		// This is intentionally malformed JSON to trigger the unmarshal error

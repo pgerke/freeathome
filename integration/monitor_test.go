@@ -44,7 +44,7 @@ func TestMonitorMissingEnvs(t *testing.T) {
 // TestMonitorSuccessfulRunInputKeypress tests that the monitor runs successfully when the user presses the 'q' key.
 func TestMonitorSuccessfulRunInputKeypress(t *testing.T) {
 	// Set up the test server
-	addr, shutdown, sendMessage := startTestWebSocketServer(t)
+	addr, shutdown := startTestWebSocketServer(t)
 	defer shutdown()
 
 	// Run the monitor
@@ -96,9 +96,6 @@ func TestMonitorSuccessfulRunInputKeypress(t *testing.T) {
 	}
 	stdin.Close() // Close stdin after sending the keypress
 
-	// Send a message to the test server to trigger a message to the monitor
-	sendMessage()
-
 	// Wait for the monitor to finish
 	err = run.Wait()
 
@@ -123,7 +120,7 @@ func TestMonitorSuccessfulRunInputKeypress(t *testing.T) {
 // TestMonitorSuccessfulRunInterrupt tests that the monitor runs successfully when the user presses the 'q' key.
 func TestMonitorSuccessfulRunInterrupt(t *testing.T) {
 	// Set up the test server
-	addr, shutdown, sendMessage := startTestWebSocketServer(t)
+	addr, shutdown := startTestWebSocketServer(t)
 	defer shutdown()
 
 	// Run the monitor
@@ -168,9 +165,6 @@ func TestMonitorSuccessfulRunInterrupt(t *testing.T) {
 		t.Fatalf("could not send interrupt signal: %v", err)
 	}
 
-	// Send a message to the test server to trigger a message to the monitor
-	sendMessage()
-
 	// Wait for the monitor to finish
 	err = run.Wait()
 
@@ -195,7 +189,7 @@ func TestMonitorSuccessfulRunInterrupt(t *testing.T) {
 // TestMonitorSuccessfulRunForcedExit tests that the monitor runs successfully when the user presses the 'q' key.
 func TestMonitorSuccessfulRunForcedExit(t *testing.T) {
 	// Set up the test server
-	addr, shutdown, _ := startTestWebSocketServer(t)
+	addr, shutdown := startTestWebSocketServer(t)
 	defer shutdown()
 
 	// Run the monitor
@@ -265,30 +259,36 @@ func TestMonitorSuccessfulRunForcedExit(t *testing.T) {
 	}
 }
 
-func startTestWebSocketServer(t *testing.T) (addr string, shutdown func(), sendMessage func()) {
+// startTestWebSocketServer starts a test WebSocket server that sends an empty message every second.
+func startTestWebSocketServer(t *testing.T) (addr string, shutdown func()) {
 	t.Helper()
 	upgrader := websocket.Upgrader{}
 
-	var conn *websocket.Conn
 	mux := http.NewServeMux()
 	mux.HandleFunc("/fhapi/v1/api/ws", func(w http.ResponseWriter, r *http.Request) {
 		t.Logf("Upgrading WebSocket")
-		var err error
-		conn, err = upgrader.Upgrade(w, r, nil)
+		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			t.Logf("Failed to upgrade WebSocket: %v", err)
 			return
 		}
 		defer conn.Close()
 
-		// Echo everything
+		// Send an empty message every second
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
 		for {
-			mt, msg, err := conn.ReadMessage()
-			if err != nil {
+			select {
+			case <-ticker.C:
+				if err := conn.WriteMessage(websocket.TextMessage, []byte("")); err != nil {
+					t.Logf("Failed to send empty message: %v", err)
+					return
+				}
+			case <-r.Context().Done():
+				// Connection was closed by the client
 				return
 			}
-			t.Logf("Received message: %s", string(msg))
-			_ = conn.WriteMessage(mt, msg)
 		}
 	})
 
@@ -306,8 +306,7 @@ func startTestWebSocketServer(t *testing.T) (addr string, shutdown func(), sendM
 
 	// Return address, sendMessage and shutdown functions
 	return ln.Addr().String(), func() {
-			server.Close()
-		}, func() {
-			conn.WriteMessage(websocket.TextMessage, []byte("{}"))
-		}
+		_ = server.Close()
+		_ = ln.Close()
+	}
 }

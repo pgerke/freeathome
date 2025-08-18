@@ -1,19 +1,13 @@
 package freeathome
 
 import (
-	"context"
 	"crypto/tls"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"regexp"
-	"sync"
-	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/gorilla/websocket"
 
 	"github.com/pgerke/freeathome/pkg/models"
 )
@@ -52,36 +46,15 @@ func NewConfig(hostname, username, password string) *Config {
 	}
 }
 
-type connection interface {
-	ReadMessage() (messageType int, p []byte, err error)
-	WriteControl(messageType int, data []byte, deadline time.Time) error
-}
-
 // SystemAccessPoint represents a system access point that can be used to communicate with a free@home system.
 type SystemAccessPoint struct {
 	UUID string
 	// config contains the configuration for the system access point
 	config *Config
-	// waitGroup is used to synchronize the web socket connection and message handling.
-	waitGroup sync.WaitGroup
-	// webSocketMessageChannel is the channel that is used to send messages received from the web socket connection.
-	webSocketMessageChannel chan []byte
-	// messageReceivedChannel is the channel that is used to signal that a message has been received.
-	messageReceivedChannel chan struct{}
 	// datapointRegex is the regular expression that is used to match datapoint keys.
 	datapointRegex *regexp.Regexp
-	// onMessageHandled is a callback function that is called when a message is handled.
-	onMessageHandled func()
 	// onError is a callback function that is called when an error occurs.
 	onError func(error)
-	// reconnectionAttempts tracks the number of failed reconnection attempts
-	reconnectionAttempts int
-	// maxReconnectionAttempts is the maximum number of reconnection attempts before giving up
-	maxReconnectionAttempts int
-	// reconnectionMutex protects access to reconnectionAttempts
-	reconnectionMutex sync.Mutex
-	// exponentialBackoffEnabled controls whether exponential backoff is used between reconnection attempts
-	exponentialBackoffEnabled bool
 }
 
 // NewSystemAccessPoint creates a new SystemAccessPoint with the specified configuration.
@@ -109,16 +82,9 @@ func NewSystemAccessPoint(config *Config) (*SystemAccessPoint, error) {
 	}
 
 	return &SystemAccessPoint{
-		UUID:                      models.EmptyUUID,
-		config:                    config,
-		waitGroup:                 sync.WaitGroup{},
-		webSocketMessageChannel:   nil,
-		messageReceivedChannel:    nil,
-		datapointRegex:            regexp.MustCompile(models.DatapointPattern),
-		reconnectionAttempts:      0,
-		maxReconnectionAttempts:   3,
-		reconnectionMutex:         sync.Mutex{},
-		exponentialBackoffEnabled: true,
+		UUID:           models.EmptyUUID,
+		config:         config,
+		datapointRegex: regexp.MustCompile(models.DatapointPattern),
 	}, nil
 }
 
@@ -167,56 +133,6 @@ func (sysAp *SystemAccessPoint) GetVerboseErrors() bool {
 	return sysAp.config.VerboseErrors
 }
 
-// SetMaxReconnectionAttempts sets the maximum number of reconnection attempts.
-func (sysAp *SystemAccessPoint) SetMaxReconnectionAttempts(maxAttempts int) {
-	sysAp.reconnectionMutex.Lock()
-	defer sysAp.reconnectionMutex.Unlock()
-	sysAp.maxReconnectionAttempts = maxAttempts
-}
-
-// GetMaxReconnectionAttempts returns the maximum number of reconnection attempts.
-func (sysAp *SystemAccessPoint) GetMaxReconnectionAttempts() int {
-	sysAp.reconnectionMutex.Lock()
-	defer sysAp.reconnectionMutex.Unlock()
-	return sysAp.maxReconnectionAttempts
-}
-
-// GetReconnectionAttempts returns the current number of reconnection attempts.
-func (sysAp *SystemAccessPoint) GetReconnectionAttempts() int {
-	sysAp.reconnectionMutex.Lock()
-	defer sysAp.reconnectionMutex.Unlock()
-	return sysAp.reconnectionAttempts
-}
-
-// SetExponentialBackoffEnabled sets whether exponential backoff is enabled for reconnection attempts.
-func (sysAp *SystemAccessPoint) SetExponentialBackoffEnabled(enabled bool) {
-	sysAp.reconnectionMutex.Lock()
-	defer sysAp.reconnectionMutex.Unlock()
-	sysAp.exponentialBackoffEnabled = enabled
-}
-
-// GetExponentialBackoffEnabled returns whether exponential backoff is enabled for reconnection attempts.
-func (sysAp *SystemAccessPoint) GetExponentialBackoffEnabled() bool {
-	sysAp.reconnectionMutex.Lock()
-	defer sysAp.reconnectionMutex.Unlock()
-	return sysAp.exponentialBackoffEnabled
-}
-
-// calculateBackoffDuration calculates the exponential backoff duration for a given attempt number.
-// The backoff follows the formula: baseDelay * (2^attempt) with a maximum cap.
-func (sysAp *SystemAccessPoint) calculateBackoffDuration(attempt int) time.Duration {
-	baseDelay := time.Second
-	maxDelay := 30 * time.Second
-
-	// Calculate exponential backoff: baseDelay * (2^attempt)
-	backoffDuration := min(
-		baseDelay*time.Duration(1<<attempt),
-		maxDelay,
-	)
-
-	return backoffDuration
-}
-
 // GetUrl constructs a URL string for the SystemAccessPoint based on the provided path.
 // It uses the appropriate protocol (http or https) depending on whether TLS is enabled.
 //
@@ -234,48 +150,6 @@ func (sysAp *SystemAccessPoint) GetUrl(path string) string {
 	}
 
 	return fmt.Sprintf("%s://%s/fhapi/v1/api/rest/%s", protocol, sysAp.config.Hostname, path)
-}
-
-// GetWebSocketUrl constructs a WebSocket URL string for the SystemAccessPoint.
-func (sysAp *SystemAccessPoint) getWebSocketUrl() string {
-	var protocol string
-	if sysAp.config.TLSEnabled {
-		protocol = "wss"
-	} else {
-		protocol = "ws"
-	}
-	return fmt.Sprintf("%s://%s/fhapi/v1/api/ws", protocol, sysAp.config.Hostname)
-}
-
-// ConnectWebSocket establishes a web socket connection to the system access point.
-func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveInterval time.Duration) error {
-	sysAp.reconnectionMutex.Lock()
-	sysAp.reconnectionAttempts = 0
-	sysAp.reconnectionMutex.Unlock()
-
-	// Start the connection loop
-	for {
-		select {
-		case <-ctx.Done():
-			// If the context is cancelled, stop the connection attempts
-			sysAp.config.Logger.Log("context cancelled, stopping web socket connection attempts")
-			return ctx.Err()
-		default:
-			// Check if we've exceeded the maximum reconnection attempts
-			sysAp.reconnectionMutex.Lock()
-			currentAttempts := sysAp.reconnectionAttempts
-			maxAttempts := sysAp.maxReconnectionAttempts
-			sysAp.reconnectionMutex.Unlock()
-
-			if currentAttempts >= maxAttempts {
-				sysAp.config.Logger.Error("maximum reconnection attempts exceeded", "attempts", currentAttempts, "max", maxAttempts)
-				return errors.New("maximum reconnection attempts exceeded")
-			}
-
-			// Attempt to establish a web socket connection
-			sysAp.webSocketConnectionLoop(ctx, keepaliveInterval)
-		}
-	}
 }
 
 // CreateVirtualDevice creates a new virtual device on the System Access Point (SysAP) with the specified serial number.
@@ -297,247 +171,6 @@ func (sysAp *SystemAccessPoint) CreateVirtualDevice(serial string, virtualDevice
 		Put(sysAp.GetUrl("virtualdevice/{uuid}/{serial}"))
 
 	return deserializeRestResponse[models.VirtualDeviceResponse](sysAp, resp, err, "failed to create virtual device")
-}
-
-// webSocketConnectionLoop establishes a web socket connection and starts the message loop.
-func (sysAp *SystemAccessPoint) webSocketConnectionLoop(ctx context.Context, keepaliveInterval time.Duration) {
-	// Add a wait group to ensure all processes are finished before returning
-	sysAp.waitGroup.Add(1)
-	defer sysAp.waitGroup.Done()
-
-	// Create a custom dialer for WebSocket connection
-	dialer := websocket.DefaultDialer
-	if sysAp.config.TLSEnabled && sysAp.config.SkipTLSVerify {
-		dialer = &websocket.Dialer{
-			Proxy:            http.ProxyFromEnvironment,
-			HandshakeTimeout: 45 * time.Second,
-			TLSClientConfig:  &tls.Config{InsecureSkipVerify: true},
-		}
-	}
-
-	// Create a new web socket connection
-	basicAuth := base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", sysAp.config.Client.UserInfo.Username, sysAp.config.Client.UserInfo.Password))
-	conn, _, err := dialer.Dial(sysAp.getWebSocketUrl(), http.Header{
-		"Authorization": []string{fmt.Sprintf("Basic %s", basicAuth)},
-	})
-
-	// Check for errors
-	if err != nil {
-		sysAp.reconnectionMutex.Lock()
-		sysAp.reconnectionAttempts++
-		currentAttempts := sysAp.reconnectionAttempts
-		maxAttempts := sysAp.maxReconnectionAttempts
-		backoffEnabled := sysAp.exponentialBackoffEnabled
-		sysAp.reconnectionMutex.Unlock()
-
-		// Prepare error message with backoff information
-		errorAttrs := []any{"error", err, "attempt", currentAttempts, "max", maxAttempts}
-		if backoffEnabled && currentAttempts < maxAttempts {
-			backoffDuration := sysAp.calculateBackoffDuration(currentAttempts)
-			errorAttrs = append(errorAttrs, "backoff", backoffDuration)
-		}
-
-		sysAp.config.Logger.Error("failed to connect to web socket", errorAttrs...)
-		sysAp.emitError(err)
-
-		// Apply exponential backoff if enabled
-		if backoffEnabled && currentAttempts < maxAttempts {
-			backoffDuration := sysAp.calculateBackoffDuration(currentAttempts)
-			time.Sleep(backoffDuration)
-		}
-
-		return
-	}
-
-	// Create connection channels
-	sysAp.messageReceivedChannel = make(chan struct{}, 1)
-	sysAp.webSocketMessageChannel = make(chan []byte, 10)
-	defer func() {
-		close(sysAp.messageReceivedChannel)
-		sysAp.messageReceivedChannel = nil
-		close(sysAp.webSocketMessageChannel)
-		sysAp.webSocketMessageChannel = nil
-	}()
-
-	// Start keepalive and message handler goroutines
-	go sysAp.webSocketKeepaliveLoop(conn, keepaliveInterval)
-	go sysAp.webSocketMessageHandler()
-
-	// Reset reconnection attempts on successful connection
-	sysAp.reconnectionMutex.Lock()
-	sysAp.reconnectionAttempts = 0
-	sysAp.reconnectionMutex.Unlock()
-
-	// Start the message loop
-	sysAp.config.Logger.Log("web socket connected successfully, starting message loop")
-	err = sysAp.webSocketMessageLoop(ctx, conn)
-
-	// Check for errors
-	if err != nil {
-		sysAp.config.Logger.Error("web socket message loop failed", "error", err)
-		sysAp.emitError(err)
-	}
-
-	// Close the web socket connection
-	err = conn.Close()
-	sysAp.config.Logger.Debug("web socket connection closed", "error", err)
-}
-
-// webSocketMessageLoop starts a loop to read messages from the web socket connection.
-func (sysAp *SystemAccessPoint) webSocketMessageLoop(ctx context.Context, conn connection) error {
-	// Verify that the connection channels are not nil
-	if sysAp.webSocketMessageChannel == nil || sysAp.messageReceivedChannel == nil {
-		errorMessage := "a connection channel is nil, cannot start message loop"
-		sysAp.config.Logger.Error(errorMessage)
-		return errors.New(errorMessage)
-	}
-
-	// Start a loop to read messages from the web socket
-	for {
-		select {
-		case <-ctx.Done():
-			// If the context is cancelled, stop the message loop
-			sysAp.config.Logger.Log("context cancelled, stopping message loop")
-			return nil
-		default:
-			// Read messages from the web socket
-			messageType, message, err := conn.ReadMessage()
-
-			// Check for errors
-			if err != nil {
-				sysAp.emitError(err)
-				return err
-			}
-
-			// Signal that a message has been received
-			select {
-			case sysAp.messageReceivedChannel <- struct{}{}:
-				// Message sent successfully
-			case <-ctx.Done():
-				// Context cancelled, exit immediately
-				return ctx.Err()
-			}
-
-			// Check if the message type is text
-			if messageType != websocket.TextMessage {
-				sysAp.config.Logger.Warn("received non-text message from web socket", "type", messageType, "message", string(message))
-				continue
-			}
-
-			// Pipe the message to the message handler
-			sysAp.config.Logger.Debug("received text message from web socket")
-			select {
-			case sysAp.webSocketMessageChannel <- message:
-				// Message sent successfully
-			case <-ctx.Done():
-				// Context cancelled, exit immediately
-				return ctx.Err()
-			}
-		}
-	}
-}
-
-// processWebSocketMessage processes a message received from the web socket connection.
-func (sysAp *SystemAccessPoint) webSocketMessageHandler() {
-	// Add a wait group to ensure all processes are finished before returning
-	sysAp.waitGroup.Add(1)
-	defer sysAp.waitGroup.Done()
-
-	// Verify that the webSocketMessageChannel is not nil
-	if sysAp.webSocketMessageChannel == nil {
-		sysAp.config.Logger.Error("webSocketMessageChannel is nil, cannot start message handler")
-		return
-	}
-
-	// Start a loop to handle messages from the web socket
-	for message := range sysAp.webSocketMessageChannel {
-		sysAp.processMessage(message)
-	}
-
-	// If the channel is closed, exit the loop
-	sysAp.config.Logger.Log("webSocketMessageChannel closed, stopping message handler")
-}
-
-func (sysAp *SystemAccessPoint) webSocketKeepaliveLoop(conn connection, interval time.Duration) {
-	// Add a wait group to ensure all processes are finished before returning
-	sysAp.waitGroup.Add(1)
-	defer sysAp.waitGroup.Done()
-
-	// Verify that the messageReceivedChannel is not nil
-	if sysAp.messageReceivedChannel == nil {
-		sysAp.config.Logger.Error("messageReceivedChannel is nil, cannot start keepalive loop")
-		return
-	}
-
-	// Create a ticker for the keepalive interval
-	timer := time.NewTicker(interval)
-	defer timer.Stop()
-
-	for {
-		select {
-		case _, ok := <-sysAp.messageReceivedChannel:
-			if ok {
-				// Reset the timer when a message is received
-				sysAp.config.Logger.Debug("message received, resetting keepalive timer")
-				timer.Reset(interval)
-			} else {
-				// If the channel is closed, exit the loop
-				sysAp.config.Logger.Log("messageReceivedChannel closed, stopping keepalive")
-				return
-			}
-		case <-timer.C:
-			// Send a ping message to the server
-			sysAp.config.Logger.Log("keepalive timer expired, sending ping message...")
-			err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(3*time.Second))
-			if err != nil {
-				sysAp.config.Logger.Error("failed to send ping message", "error", err)
-				sysAp.emitError(err)
-				return
-			}
-		}
-	}
-}
-
-func (sysAp *SystemAccessPoint) processMessage(message []byte) {
-	defer func() {
-		// Call the onMessageHandled callback if it is set
-		if sysAp.onMessageHandled != nil {
-			sysAp.onMessageHandled()
-		}
-	}()
-
-	// Unmarshal the message into a WebSocketMessage struct
-	var msg models.WebSocketMessage
-	err := json.Unmarshal(message, &msg)
-
-	if err != nil {
-		sysAp.config.Logger.Error("failed to unmarshal message", "error", err)
-		sysAp.emitError(err)
-		return
-	}
-
-	// Check if the message is empty
-	if len(msg[models.EmptyUUID].Datapoints) == 0 {
-		sysAp.config.Logger.Warn("web socket message has no datapoints")
-		return
-	}
-
-	// Process data point updates
-	for key, datapoint := range msg[models.EmptyUUID].Datapoints {
-		// Check if the key matches the expected format
-		if !sysAp.datapointRegex.MatchString(key) {
-			sysAp.config.Logger.Warn(`Ignored datapoint with invalid key format`, "key", key)
-			continue
-		}
-
-		// Log the datapoint update
-		sysAp.config.Logger.Log("data point update",
-			"device", sysAp.datapointRegex.FindStringSubmatch(key)[1],
-			"channel", sysAp.datapointRegex.FindStringSubmatch(key)[2],
-			"datapoint", sysAp.datapointRegex.FindStringSubmatch(key)[3],
-			"value", datapoint,
-		)
-	}
 }
 
 // GetConfiguration retrieves the configuration from the system access point.
