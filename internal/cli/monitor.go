@@ -73,16 +73,10 @@ func Monitor(config MonitorCommandConfig) error {
 
 	fmt.Println("Press 'q' or Ctrl+C to exit")
 
-	// // Set the maximum reconnection attempts
-	// sysAp.SetMaxReconnectionAttempts(config.MaxReconnectionAttempts)
-
-	// // Set the exponential backoff setting
-	// sysAp.SetExponentialBackoffEnabled(config.ExponentialBackoff)
-
 	// Connect to the system access point websocket
 	timeout := time.Duration(config.Timeout) * time.Second
 	go func() {
-		shutdown <- sysAp.ConnectWebSocket(ctx, timeout)
+		shutdown <- sysAp.ConnectWebSocket(ctx, config.MaxReconnectionAttempts, config.ExponentialBackoff, timeout)
 	}()
 
 	// Handle both forced shutdown and WebSocket connection errors

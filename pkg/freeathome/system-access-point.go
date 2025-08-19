@@ -53,6 +53,8 @@ type SystemAccessPoint struct {
 	config *Config
 	// datapointRegex is the regular expression that is used to match datapoint keys.
 	datapointRegex *regexp.Regexp
+	// clock provides time operations that can be mocked in tests
+	clock clock
 	// onError is a callback function that is called when an error occurs.
 	onError func(error)
 }
@@ -85,6 +87,7 @@ func NewSystemAccessPoint(config *Config) (*SystemAccessPoint, error) {
 		UUID:           models.EmptyUUID,
 		config:         config,
 		datapointRegex: regexp.MustCompile(models.DatapointPattern),
+		clock:          &realClock{},
 	}, nil
 }
 

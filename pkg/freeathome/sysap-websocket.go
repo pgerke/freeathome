@@ -28,65 +28,15 @@ type SystemAccessPointWebSocket struct {
 	waitGroup sync.WaitGroup
 	// onMessageHandled is a callback function that is called when a message is handled.
 	onMessageHandled func()
-	// // reconnectionAttempts tracks the number of failed reconnection attempts
-	// reconnectionAttempts int
-	// // maxReconnectionAttempts is the maximum number of reconnection attempts before giving up
-	// maxReconnectionAttempts int
-	// // reconnectionMutex protects access to reconnectionAttempts
-	// reconnectionMutex sync.Mutex
-	// // exponentialBackoffEnabled controls whether exponential backoff is used between reconnection attempts
-	// exponentialBackoffEnabled bool
+	// reconnectionAttempts tracks the number of failed reconnection attempts
+	reconnectionAttempts int
+	// maxReconnectionAttempts is the maximum number of reconnection attempts before giving up
+	maxReconnectionAttempts int
+	// exponentialBackoff controls whether exponential backoff is used between reconnection attempts
+	exponentialBackoff bool
+	// reconnectionMutex protects access to reconnectionAttempts
+	reconnectionMutex sync.Mutex
 }
-
-// // SetMaxReconnectionAttempts sets the maximum number of reconnection attempts.
-// func (ws *SystemAccessPointWebSocket) SetMaxReconnectionAttempts(maxAttempts int) {
-// 	sysAp.reconnectionMutex.Lock()
-// 	defer sysAp.reconnectionMutex.Unlock()
-// 	sysAp.maxReconnectionAttempts = maxAttempts
-// }
-
-// // GetMaxReconnectionAttempts returns the maximum number of reconnection attempts.
-// func (ws *SystemAccessPointWebSocket) GetMaxReconnectionAttempts() int {
-// 	sysAp.reconnectionMutex.Lock()
-// 	defer sysAp.reconnectionMutex.Unlock()
-// 	return sysAp.maxReconnectionAttempts
-// }
-
-// // GetReconnectionAttempts returns the current number of reconnection attempts.
-// func (ws *SystemAccessPointWebSocket) GetReconnectionAttempts() int {
-// 	sysAp.reconnectionMutex.Lock()
-// 	defer sysAp.reconnectionMutex.Unlock()
-// 	return sysAp.reconnectionAttempts
-// }
-
-// // SetExponentialBackoffEnabled sets whether exponential backoff is enabled for reconnection attempts.
-// func (ws *SystemAccessPointWebSocket) SetExponentialBackoffEnabled(enabled bool) {
-// 	sysAp.reconnectionMutex.Lock()
-// 	defer sysAp.reconnectionMutex.Unlock()
-// 	sysAp.exponentialBackoffEnabled = enabled
-// }
-
-// // GetExponentialBackoffEnabled returns whether exponential backoff is enabled for reconnection attempts.
-// func (ws *SystemAccessPointWebSocket) GetExponentialBackoffEnabled() bool {
-// 	sysAp.reconnectionMutex.Lock()
-// 	defer sysAp.reconnectionMutex.Unlock()
-// 	return sysAp.exponentialBackoffEnabled
-// }
-
-// calculateBackoffDuration calculates the exponential backoff duration for a given attempt number.
-// The backoff follows the formula: baseDelay * (2^attempt) with a maximum cap.
-// func (ws *SystemAccessPointWebSocket) calculateBackoffDuration(attempt int) time.Duration {
-// 	baseDelay := time.Second
-// 	maxDelay := 30 * time.Second
-
-// 	// Calculate exponential backoff: baseDelay * (2^attempt)
-// 	backoffDuration := min(
-// 		baseDelay*time.Duration(1<<attempt),
-// 		maxDelay,
-// 	)
-
-// 	return backoffDuration
-// }
 
 // GetWebSocketUrl constructs a WebSocket URL string for the SystemAccessPoint.
 func (ws *SystemAccessPointWebSocket) getWebSocketUrl() string {
@@ -100,19 +50,19 @@ func (ws *SystemAccessPointWebSocket) getWebSocketUrl() string {
 }
 
 // ConnectWebSocket establishes a web socket connection to the system access point.
-func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveInterval time.Duration) error {
+func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, maxReconnectionAttempts int, exponentialBackoff bool, keepaliveInterval time.Duration) error {
 	// Create a new web socket connection
 	ws := SystemAccessPointWebSocket{
-		sysAp:     sysAp,
-		waitGroup: sync.WaitGroup{},
+		sysAp:                   sysAp,
+		waitGroup:               sync.WaitGroup{},
+		maxReconnectionAttempts: maxReconnectionAttempts,
+		exponentialBackoff:      exponentialBackoff,
+		reconnectionMutex:       sync.Mutex{},
+		reconnectionAttempts:    0,
 	}
 
 	// Wait for all processes to finish before returning
 	defer ws.waitGroup.Wait()
-
-	// sysAp.reconnectionMutex.Lock()
-	// sysAp.reconnectionAttempts = 0
-	// sysAp.reconnectionMutex.Unlock()
 
 	// Start the connection loop
 	for {
@@ -122,16 +72,15 @@ func (sysAp *SystemAccessPoint) ConnectWebSocket(ctx context.Context, keepaliveI
 			ws.sysAp.config.Logger.Log("context cancelled, stopping web socket connection attempts")
 			return ctx.Err()
 		default:
-			// // Check if we've exceeded the maximum reconnection attempts
-			// sysAp.reconnectionMutex.Lock()
-			// currentAttempts := sysAp.reconnectionAttempts
-			// maxAttempts := sysAp.maxReconnectionAttempts
-			// sysAp.reconnectionMutex.Unlock()
+			// Check if we've exceeded the maximum reconnection attempts
+			ws.reconnectionMutex.Lock()
+			currentAttempts := ws.reconnectionAttempts
+			ws.reconnectionMutex.Unlock()
 
-			// if currentAttempts >= maxAttempts {
-			// 	sysAp.config.Logger.Error("maximum reconnection attempts exceeded", "attempts", currentAttempts, "max", maxAttempts)
-			// 	return errors.New("maximum reconnection attempts exceeded")
-			// }
+			if currentAttempts >= ws.maxReconnectionAttempts {
+				ws.sysAp.config.Logger.Error("maximum reconnection attempts exceeded", "attempts", currentAttempts, "max", ws.maxReconnectionAttempts)
+				return errors.New("maximum reconnection attempts exceeded")
+			}
 
 			// Attempt to establish a web socket connection
 			ws.webSocketConnectionLoop(ctx, keepaliveInterval)
@@ -163,29 +112,32 @@ func (ws *SystemAccessPointWebSocket) webSocketConnectionLoop(ctx context.Contex
 
 	// Check for errors
 	if err != nil {
-		// sysAp.reconnectionMutex.Lock()
-		// sysAp.reconnectionAttempts++
-		// currentAttempts := sysAp.reconnectionAttempts
-		// maxAttempts := sysAp.maxReconnectionAttempts
-		// backoffEnabled := sysAp.exponentialBackoffEnabled
-		// sysAp.reconnectionMutex.Unlock()
+		// Safely increment reconnection attempts
+		ws.reconnectionMutex.Lock()
+		ws.reconnectionAttempts++
+		currentAttempts := ws.reconnectionAttempts
+		ws.reconnectionMutex.Unlock()
 
-		// // Prepare error message with backoff information
-		// errorAttrs := []any{"error", err, "attempt", currentAttempts, "max", maxAttempts}
-		// if backoffEnabled && currentAttempts < maxAttempts {
-		// 	backoffDuration := sysAp.calculateBackoffDuration(currentAttempts)
-		// 	errorAttrs = append(errorAttrs, "backoff", backoffDuration)
-		// }
+		// Prepare error message with backoff information
+		errorAttrs := []any{"error", err, "attempt", currentAttempts, "max", ws.maxReconnectionAttempts}
+		if ws.exponentialBackoff && currentAttempts < ws.maxReconnectionAttempts {
+			backoffDuration := calculateBackoffDuration(currentAttempts)
+			errorAttrs = append(errorAttrs, "backoff", backoffDuration)
+		}
 
-		// sysAp.config.Logger.Error("failed to connect to web socket", errorAttrs...)
-		ws.sysAp.config.Logger.Error("failed to connect to web socket", "error", err)
+		ws.sysAp.config.Logger.Error("failed to connect to web socket", errorAttrs...)
 		ws.sysAp.emitError(err)
 
-		// // Apply exponential backoff if enabled
-		// if backoffEnabled && currentAttempts < maxAttempts {
-		// 	backoffDuration := sysAp.calculateBackoffDuration(currentAttempts)
-		// 	time.Sleep(backoffDuration)
-		// }
+		// Apply exponential backoff if enabled and we haven't exceeded max attempts
+		if ws.exponentialBackoff && currentAttempts < ws.maxReconnectionAttempts {
+			backoffDuration := calculateBackoffDuration(currentAttempts)
+			select {
+			case <-ctx.Done():
+				return
+			case <-ws.sysAp.clock.After(backoffDuration):
+				// Continue to next attempt
+			}
+		}
 
 		return
 	}
@@ -202,10 +154,10 @@ func (ws *SystemAccessPointWebSocket) webSocketConnectionLoop(ctx context.Contex
 	go ws.webSocketKeepaliveLoop(messageReceivedChannel, conn, keepaliveInterval)
 	go ws.webSocketMessageHandler(webSocketMessageChannel)
 
-	// // Reset reconnection attempts on successful connection
-	// sysAp.reconnectionMutex.Lock()
-	// sysAp.reconnectionAttempts = 0
-	// sysAp.reconnectionMutex.Unlock()
+	// Reset reconnection attempts on successful connection
+	ws.reconnectionMutex.Lock()
+	ws.reconnectionAttempts = 0
+	ws.reconnectionMutex.Unlock()
 
 	// Start the message loop
 	ws.sysAp.config.Logger.Log("web socket connected successfully, starting message loop")
@@ -377,4 +329,19 @@ func (ws *SystemAccessPointWebSocket) processMessage(message []byte) {
 			"value", datapoint,
 		)
 	}
+}
+
+// calculateBackoffDuration calculates the exponential backoff duration for a given attempt number.
+// The backoff follows the formula: baseDelay * (2^attempt) with a maximum cap.
+func calculateBackoffDuration(attempt int) time.Duration {
+	baseDelay := time.Second
+	maxDelay := 30 * time.Second
+
+	// Calculate exponential backoff: baseDelay * (2^attempt)
+	backoffDuration := min(
+		baseDelay*time.Duration(1<<attempt),
+		maxDelay,
+	)
+
+	return backoffDuration
 }

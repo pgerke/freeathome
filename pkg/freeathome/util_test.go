@@ -10,7 +10,61 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
+
+// ThreadSafeBuffer wraps bytes.Buffer with thread-safe operations
+type ThreadSafeBuffer struct {
+	buf bytes.Buffer
+	mu  sync.RWMutex
+}
+
+func (tb *ThreadSafeBuffer) Write(p []byte) (n int, err error) {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	return tb.buf.Write(p)
+}
+
+func (tb *ThreadSafeBuffer) String() string {
+	tb.mu.RLock()
+	defer tb.mu.RUnlock()
+	return tb.buf.String()
+}
+
+func (tb *ThreadSafeBuffer) Reset() {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	tb.buf.Reset()
+}
+
+// fakeClock is a mock implementation of the clock interface for testing purposes.
+type fakeClock struct {
+	now        time.Time
+	afterCalls []time.Duration
+	mu         sync.Mutex
+}
+
+func (mt *fakeClock) Now() time.Time {
+	mt.mu.Lock()
+	defer mt.mu.Unlock()
+	return mt.now
+}
+
+func (mt *fakeClock) After(d time.Duration) <-chan time.Time {
+	mt.mu.Lock()
+	defer mt.mu.Unlock()
+	mt.afterCalls = append(mt.afterCalls, d)
+	ch := make(chan time.Time, 1)
+	ch <- mt.now.Add(d)
+	close(ch)
+	return ch
+}
+
+func (mt *fakeClock) Sleep(d time.Duration) {
+	mt.mu.Lock()
+	defer mt.mu.Unlock()
+	mt.now = mt.now.Add(d)
+}
 
 const expectedErrorGotNil = "Expected error, got nil"
 const expectedErrorGotValue = "Expected error '%s', got '%v'"
@@ -18,11 +72,11 @@ const expectedNil = "Expected nil result"
 const unexpectedLogOutput = "Unexpected log output, got: %s"
 
 // setupSysAp initializes a SystemAccessPoint with a mock logger and returns it along with a buffer to capture log output.
-func setupSysAp(t *testing.T, tlsEnabled bool, skipTLSVerify bool) (*SystemAccessPoint, *bytes.Buffer, chan slog.Record) {
+func setupSysAp(t *testing.T, tlsEnabled bool, skipTLSVerify bool) (*SystemAccessPoint, *ThreadSafeBuffer, chan slog.Record) {
 	t.Helper()
 
-	// Create a buffer to capture log output
-	var buf bytes.Buffer
+	// Create a thread-safe buffer to capture log output
+	var buf ThreadSafeBuffer
 	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})
@@ -43,11 +97,11 @@ func setupSysAp(t *testing.T, tlsEnabled bool, skipTLSVerify bool) (*SystemAcces
 }
 
 // setupSysApWebSocket initializes a SystemAccessPointWebSocket with a mock logger and returns it along with a buffer to capture log output.
-func setupSysApWebSocket(t *testing.T, tlsEnabled bool, skipTLSVerify bool) (*SystemAccessPointWebSocket, *bytes.Buffer, chan slog.Record) {
+func setupSysApWebSocket(t *testing.T, tlsEnabled bool, skipTLSVerify bool) (*SystemAccessPointWebSocket, *ThreadSafeBuffer, chan slog.Record) {
 	t.Helper()
 
-	// Create a buffer to capture log output
-	var buf bytes.Buffer
+	// Create a thread-safe buffer to capture log output
+	var buf ThreadSafeBuffer
 	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})
