@@ -180,7 +180,7 @@ password: test-pass`,
 			v := viper.New()
 
 			// Test setup function
-			sysAp, err := setup(GetCommandConfig{
+			sysAp, err := setup(CommandConfig{
 				Viper:         v,
 				TLSEnabled:    tt.tlsEnabled,
 				SkipTLSVerify: tt.skipTLSVerify,
@@ -230,7 +230,7 @@ password: test-pass`
 	v := viper.New()
 
 	// Test setup function - should fail due to invalid YAML
-	_, err = setup(GetCommandConfig{
+	_, err = setup(CommandConfig{
 		Viper:         v,
 		TLSEnabled:    true,
 		SkipTLSVerify: false,
@@ -244,7 +244,7 @@ password: test-pass`
 // TestSetupWithNilViper tests setup with nil viper instance
 func TestSetupWithNilViper(t *testing.T) {
 	// Test setup function with nil viper
-	_, err := setup(GetCommandConfig{
+	_, err := setup(CommandConfig{
 		Viper:         nil,
 		TLSEnabled:    true,
 		SkipTLSVerify: false,
@@ -376,7 +376,7 @@ func TestGetDeviceList(t *testing.T) {
 			sysAp, _, _ := setupMock(t, v, tt.responseCode, tt.responseBody)
 
 			// Override the setupFunc to use the mock SystemAccessPoint
-			setupFunc = func(config GetCommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
+			setupFunc = func(config CommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
 				return sysAp, nil
 			}
 			defer func() {
@@ -391,12 +391,14 @@ func TestGetDeviceList(t *testing.T) {
 
 			// Test GetDeviceList function
 			err := GetDeviceList(GetCommandConfig{
-				Viper:         v,
-				TLSEnabled:    false,
-				SkipTLSVerify: false,
-				LogLevel:      "info",
-				OutputFormat:  tt.outputFormat,
-				Prettify:      tt.prettify,
+				CommandConfig: CommandConfig{
+					Viper:         v,
+					TLSEnabled:    false,
+					SkipTLSVerify: false,
+					LogLevel:      "info",
+				},
+				OutputFormat: tt.outputFormat,
+				Prettify:     tt.prettify,
 			})
 
 			// Close pipe and read output
@@ -440,12 +442,14 @@ password: test-pass`
 
 	// Test GetDeviceList function - should fail due to invalid YAML
 	err = GetDeviceList(GetCommandConfig{
-		Viper:         v,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         v,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	})
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
@@ -456,12 +460,14 @@ password: test-pass`
 func TestGetDeviceListWithNilViper(t *testing.T) {
 	// Test GetDeviceList function with nil viper
 	err := GetDeviceList(GetCommandConfig{
-		Viper:         nil,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         nil,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	})
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
@@ -475,12 +481,14 @@ func TestGetDeviceListFunctionExists(t *testing.T) {
 
 	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
 	err := GetDeviceList(GetCommandConfig{
-		Viper:         v,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         v,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	})
 	// We expect this to fail due to network/connection issues, but the function should exist
 	if err == nil {
@@ -496,7 +504,7 @@ func TestSetupFunctionExists(t *testing.T) {
 	v := setupViper(t)
 
 	// Test that the function can be called
-	sysAp, err := setup(GetCommandConfig{
+	sysAp, err := setup(CommandConfig{
 		Viper:         v,
 		TLSEnabled:    true,
 		SkipTLSVerify: false,
@@ -677,7 +685,7 @@ func TestGetConfiguration(t *testing.T) {
 			sysAp, _, _ := setupMock(t, v, tt.responseCode, tt.responseBody)
 
 			// Override the setupFunc to use the mock SystemAccessPoint
-			setupFunc = func(config GetCommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
+			setupFunc = func(config CommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
 				return sysAp, nil
 			}
 			defer func() {
@@ -692,12 +700,14 @@ func TestGetConfiguration(t *testing.T) {
 
 			// Test GetConfiguration function
 			err := GetConfiguration(GetCommandConfig{
-				Viper:         v,
-				TLSEnabled:    false,
-				SkipTLSVerify: false,
-				LogLevel:      "info",
-				OutputFormat:  tt.outputFormat,
-				Prettify:      tt.prettify,
+				CommandConfig: CommandConfig{
+					Viper:         v,
+					TLSEnabled:    false,
+					SkipTLSVerify: false,
+					LogLevel:      "info",
+				},
+				OutputFormat: tt.outputFormat,
+				Prettify:     tt.prettify,
 			})
 
 			// Close pipe and read output
@@ -741,12 +751,14 @@ password: test-pass`
 
 	// Test GetConfiguration function - should fail due to invalid YAML
 	err = GetConfiguration(GetCommandConfig{
-		Viper:         v,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         v,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	})
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
@@ -757,12 +769,14 @@ password: test-pass`
 func TestGetConfigurationWithNilViper(t *testing.T) {
 	// Test GetConfiguration function with nil viper
 	err := GetConfiguration(GetCommandConfig{
-		Viper:         nil,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         nil,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	})
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
@@ -776,12 +790,14 @@ func TestGetConfigurationFunctionExists(t *testing.T) {
 
 	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
 	err := GetConfiguration(GetCommandConfig{
-		Viper:         v,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         v,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	})
 	// We expect this to fail due to network/connection issues, but the function should exist
 	if err == nil {
@@ -1073,7 +1089,7 @@ func TestGetDevice(t *testing.T) {
 			sysAp, _, _ := setupMock(t, v, tt.responseCode, tt.responseBody)
 
 			// Override the setupFunc to use the mock SystemAccessPoint
-			setupFunc = func(config GetCommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
+			setupFunc = func(config CommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
 				return sysAp, nil
 			}
 			defer func() {
@@ -1088,12 +1104,14 @@ func TestGetDevice(t *testing.T) {
 
 			// Test GetDevice function
 			err := GetDevice(GetCommandConfig{
-				Viper:         v,
-				TLSEnabled:    false,
-				SkipTLSVerify: false,
-				LogLevel:      "info",
-				OutputFormat:  tt.outputFormat,
-				Prettify:      tt.prettify,
+				CommandConfig: CommandConfig{
+					Viper:         v,
+					TLSEnabled:    false,
+					SkipTLSVerify: false,
+					LogLevel:      "info",
+				},
+				OutputFormat: tt.outputFormat,
+				Prettify:     tt.prettify,
 			}, tt.serial)
 
 			// Close pipe and read output
@@ -1137,12 +1155,14 @@ password: test-pass`
 
 	// Test GetDevice function - should fail due to invalid YAML
 	err = GetDevice(GetCommandConfig{
-		Viper:         v,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         v,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	}, "ABB7F595EC47")
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
@@ -1153,12 +1173,14 @@ password: test-pass`
 func TestGetDeviceWithNilViper(t *testing.T) {
 	// Test GetDevice function with nil viper
 	err := GetDevice(GetCommandConfig{
-		Viper:         nil,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         nil,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	}, "ABB7F595EC47")
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
@@ -1172,12 +1194,14 @@ func TestGetDeviceFunctionExists(t *testing.T) {
 
 	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
 	err := GetDevice(GetCommandConfig{
-		Viper:         v,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         v,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	}, "ABB7F595EC47")
 	// We expect this to fail due to network/connection issues, but the function should exist
 	if err == nil {
@@ -1524,7 +1548,7 @@ func TestGetDatapoint(t *testing.T) {
 			sysAp, _, _ := setupMock(t, v, tt.responseCode, tt.responseBody)
 
 			// Override the setupFunc to use the mock SystemAccessPoint
-			setupFunc = func(config GetCommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
+			setupFunc = func(config CommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
 				return sysAp, nil
 			}
 			defer func() {
@@ -1539,12 +1563,14 @@ func TestGetDatapoint(t *testing.T) {
 
 			// Test GetDatapoint function
 			err := GetDatapoint(GetCommandConfig{
-				Viper:         v,
-				TLSEnabled:    false,
-				SkipTLSVerify: false,
-				LogLevel:      "info",
-				OutputFormat:  tt.outputFormat,
-				Prettify:      tt.prettify,
+				CommandConfig: CommandConfig{
+					Viper:         v,
+					TLSEnabled:    false,
+					SkipTLSVerify: false,
+					LogLevel:      "info",
+				},
+				OutputFormat: tt.outputFormat,
+				Prettify:     tt.prettify,
 			}, tt.serial, tt.channel, tt.datapoint)
 
 			// Close pipe and read output
@@ -1588,12 +1614,14 @@ password: test-pass`
 
 	// Test GetDatapoint function - should fail due to invalid YAML
 	err = GetDatapoint(GetCommandConfig{
-		Viper:         v,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         v,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	}, "ABB7F595EC47", "ch0000", "idp0000")
 	if err == nil {
 		t.Error("Expected error when loading invalid config file, got none")
@@ -1604,12 +1632,14 @@ password: test-pass`
 func TestGetDatapointWithNilViper(t *testing.T) {
 	// Test GetDatapoint function with nil viper
 	err := GetDatapoint(GetCommandConfig{
-		Viper:         nil,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         nil,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	}, "ABB7F595EC47", "ch0000", "idp0000")
 	if err == nil {
 		t.Error("Expected error with nil viper, got none")
@@ -1623,12 +1653,14 @@ func TestGetDatapointFunctionExists(t *testing.T) {
 
 	// Test that the function can be called (it will likely fail due to network issues, but that's expected)
 	err := GetDatapoint(GetCommandConfig{
-		Viper:         v,
-		TLSEnabled:    true,
-		SkipTLSVerify: false,
-		LogLevel:      "info",
-		OutputFormat:  "text",
-		Prettify:      false,
+		CommandConfig: CommandConfig{
+			Viper:         v,
+			TLSEnabled:    true,
+			SkipTLSVerify: false,
+			LogLevel:      "info",
+		},
+		OutputFormat: "text",
+		Prettify:     false,
 	}, "ABB7F595EC47", "ch0000", "idp0000")
 	// We expect this to fail due to network/connection issues, but the function should exist
 	if err == nil {

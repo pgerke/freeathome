@@ -10,17 +10,51 @@ import (
 
 var configFileDir, _ = os.UserHomeDir()
 
+// GetExecutableName returns the name of the executable
+func GetExecutableName() (string, error) {
+	executablePath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Base(executablePath), nil
+}
+
+// MustExecutableName returns the name of the executable or panics if it cannot be determined
+func MustExecutableName() string {
+	executableName, err := GetExecutableName()
+	if err != nil {
+		panic(err)
+	}
+
+	return executableName
+}
+
 // Config represents the CLI configuration settings
 type Config struct {
-	Hostname string `mapstructure:"hostname" yaml:"hostname"`
-	Username string `mapstructure:"username" yaml:"username"`
-	Password string `mapstructure:"password" yaml:"password"`
+	Executable string `yaml:"-"`
+	Hostname   string `mapstructure:"hostname" yaml:"hostname"`
+	Username   string `mapstructure:"username" yaml:"username"`
+	Password   string `mapstructure:"password" yaml:"password"`
+}
+
+// CommandConfig represents the basic configuration for a command
+type CommandConfig struct {
+	Viper         *viper.Viper
+	TLSEnabled    bool
+	SkipTLSVerify bool
+	LogLevel      string
 }
 
 // load loads the configuration from file and environment variables
 func load(v *viper.Viper, configFile string) (*Config, error) {
 	if v == nil {
 		return nil, fmt.Errorf("viper is nil")
+	}
+
+	executableName, err := GetExecutableName()
+	if err != nil {
+		return nil, fmt.Errorf("error getting executable name: %w", err)
 	}
 
 	// Initialize viper configuration
@@ -42,6 +76,7 @@ func load(v *viper.Viper, configFile string) (*Config, error) {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
+	cfg.Executable = executableName
 	return &cfg, nil
 }
 
@@ -107,12 +142,11 @@ func initConfig(v *viper.Viper) {
 
 	// Set environment variable prefix
 	v.SetEnvPrefix("FREEATHOME")
-	v.AutomaticEnv()
 
 	// Map environment variables to config keys
-	_ = v.BindEnv("hostname", "HOSTNAME")
-	_ = v.BindEnv("username", "USERNAME")
-	_ = v.BindEnv("password", "PASSWORD")
+	_ = v.BindEnv("hostname")
+	_ = v.BindEnv("username")
+	_ = v.BindEnv("password")
 
 	// Read config file if it exists
 	if err := v.ReadInConfig(); err != nil {

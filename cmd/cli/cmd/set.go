@@ -46,11 +46,13 @@ func init() {
 
 func runSetDatapoint(cmd *cobra.Command, args []string) error {
 	return cli.SetDatapoint(cli.SetCommandConfig{
-		Viper:         viper.GetViper(),
-		TLSEnabled:    tlsEnabled,
-		SkipTLSVerify: skipTLSVerify,
-		LogLevel:      logLevel,
-		OutputFormat:  outputFormat,
-		Prettify:      prettify,
+		CommandConfig: cli.CommandConfig{
+			Viper:         viper.GetViper(),
+			TLSEnabled:    tlsEnabled,
+			SkipTLSVerify: skipTLSVerify,
+			LogLevel:      logLevel,
+		},
+		OutputFormat: outputFormat,
+		Prettify:     prettify,
 	}, args[0], args[1], args[2], args[3])
 }

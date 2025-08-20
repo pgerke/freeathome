@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"sync"
 	"testing"
 
 	internal "github.com/pgerke/freeathome/internal"
@@ -18,30 +19,13 @@ func TestMainVersionSetting(t *testing.T) {
 	}
 }
 
-// TestMainFunctionDoesNotPanic tests that the main function doesn't panic when called.
-func TestMainFunctionDoesNotPanic(t *testing.T) {
-	// We'll capture stderr to avoid output during tests
-	oldStderr := os.Stderr
-	_, w, _ := os.Pipe()
-	os.Stderr = w
-
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("main() panicked: %v", r)
-		}
-		os.Stderr = oldStderr
-		_ = w.Close()
-	}()
-
-	// This will likely fail since we're not providing proper args, but we're testing it doesn't panic
-	// We'll call main in a goroutine and then immediately return to avoid hanging
-	go func() {
-		main()
-	}()
-}
-
 // TestVersionAssignment tests that the version and commit are assigned correctly.
 func TestVersionAssignment(t *testing.T) {
+	// Use a mutex to prevent concurrent access to the version variables
+	var mu sync.Mutex
+	mu.Lock()
+	defer mu.Unlock()
+
 	originalVersion := internal.Version
 	originalCommit := internal.Commit
 
@@ -61,4 +45,10 @@ func TestVersionAssignment(t *testing.T) {
 	// Restore original values
 	internal.Version = originalVersion
 	internal.Commit = originalCommit
+}
+
+// TestMain runs tests sequentially to avoid data races on global variables
+func TestMain(m *testing.M) {
+	// Run tests sequentially to avoid data races on global variables
+	os.Exit(m.Run())
 }

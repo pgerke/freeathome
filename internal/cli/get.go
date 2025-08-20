@@ -10,7 +10,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/pgerke/freeathome/pkg/freeathome"
 	"github.com/pgerke/freeathome/pkg/models"
-	"github.com/spf13/viper"
 	"golang.org/x/term"
 )
 
@@ -18,12 +17,9 @@ var setupFunc = setup
 
 // GetCommandConfig is a struct that contains the configuration for the get command
 type GetCommandConfig struct {
-	Viper         *viper.Viper
-	TLSEnabled    bool
-	SkipTLSVerify bool
-	LogLevel      string
-	OutputFormat  string
-	Prettify      bool
+	CommandConfig
+	OutputFormat string
+	Prettify     bool
 }
 
 // parseLogLevel converts a string log level to slog.Level
@@ -74,7 +70,7 @@ func outputJSON(data any, dataType string, prettify bool) error {
 	return nil
 }
 
-func setup(config GetCommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
+func setup(config CommandConfig, configFile string) (*freeathome.SystemAccessPoint, error) {
 	// Load configuration
 	cfg, err := load(config.Viper, configFile)
 	if err != nil {
@@ -83,13 +79,13 @@ func setup(config GetCommandConfig, configFile string) (*freeathome.SystemAccess
 
 	// Check if configuration is complete
 	if cfg.Hostname == "" {
-		return nil, fmt.Errorf("hostname not configured. Run 'free@home configure' first")
+		return nil, fmt.Errorf("hostname not configured. Run '%s configure' first", cfg.Executable)
 	}
 	if cfg.Username == "" {
-		return nil, fmt.Errorf("username not configured. Run 'free@home configure' first")
+		return nil, fmt.Errorf("username not configured. Run '%s configure' first", cfg.Executable)
 	}
 	if cfg.Password == "" {
-		return nil, fmt.Errorf("password not configured. Run 'free@home configure' first")
+		return nil, fmt.Errorf("password not configured. Run '%s configure' first", cfg.Executable)
 	}
 
 	// Create a new logger with the specified options
@@ -113,7 +109,7 @@ func setup(config GetCommandConfig, configFile string) (*freeathome.SystemAccess
 // GetDeviceList retrieves and displays the device list
 func GetDeviceList(config GetCommandConfig) error {
 	// Setup system access point
-	sysAp, err := setupFunc(config, "")
+	sysAp, err := setupFunc(config.CommandConfig, "")
 	if err != nil {
 		return err
 	}
@@ -158,7 +154,7 @@ func GetDeviceList(config GetCommandConfig) error {
 // GetConfiguration retrieves and displays the configuration
 func GetConfiguration(config GetCommandConfig) error {
 	// Setup system access point
-	sysAp, err := setupFunc(config, "")
+	sysAp, err := setupFunc(config.CommandConfig, "")
 	if err != nil {
 		return err
 	}
@@ -196,7 +192,7 @@ func GetConfiguration(config GetCommandConfig) error {
 // GetDevice retrieves and displays a specific device by serial number
 func GetDevice(config GetCommandConfig, serial string) error {
 	// Setup system access point
-	sysAp, err := setupFunc(config, "")
+	sysAp, err := setupFunc(config.CommandConfig, "")
 	if err != nil {
 		return err
 	}
@@ -263,7 +259,7 @@ func GetDevice(config GetCommandConfig, serial string) error {
 // GetDatapoint retrieves and displays a specific datapoint
 func GetDatapoint(config GetCommandConfig, serial string, channel string, datapoint string) error {
 	// Setup system access point
-	sysAp, err := setupFunc(config, "")
+	sysAp, err := setupFunc(config.CommandConfig, "")
 	if err != nil {
 		return err
 	}

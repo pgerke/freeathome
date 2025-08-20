@@ -97,7 +97,7 @@ func TestColorHandlerEnabled(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			handler := NewColorHandler(io.Discard, nil)
 
-			result := handler.Enabled(context.Background(), test.level)
+			result := handler.Enabled(t.Context(), test.level)
 			if result != test.expected {
 				t.Errorf("Enabled(%v) = %v; expected %v", test.level, result, test.expected)
 			}
@@ -176,7 +176,7 @@ func TestColorHandlerHandle(t *testing.T) {
 				}
 			}
 
-			err := handler.Handle(context.Background(), test.record)
+			err := handler.Handle(t.Context(), test.record)
 			if err != nil {
 				t.Fatalf("Handle returned an error: %v", err)
 			}

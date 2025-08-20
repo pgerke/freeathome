@@ -424,6 +424,14 @@ func TestPromptForField(t *testing.T) {
 			expectError:   true,
 			errorContains: "error reading input",
 		},
+		{
+			name:         "User confirms current value",
+			displayName:  "Hostname",
+			currentValue: "existing-host",
+			maskValue:    false,
+			scanError:    fmt.Errorf("unexpected newline"),
+			expectValue:  "existing-host",
+		},
 	}
 
 	for _, tt := range tests {
@@ -432,7 +440,7 @@ func TestPromptForField(t *testing.T) {
 			originalScanFunc := scanFunc
 			defer func() { scanFunc = originalScanFunc }()
 
-			scanFunc = func(a ...interface{}) (n int, err error) {
+			scanFunc = func(a ...any) (n int, err error) {
 				if tt.scanError != nil {
 					return 0, tt.scanError
 				}

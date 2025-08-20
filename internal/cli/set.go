@@ -4,23 +4,19 @@ import (
 	"fmt"
 
 	"github.com/pgerke/freeathome/pkg/models"
-	"github.com/spf13/viper"
 )
 
 // SetCommandConfig is a struct that contains the configuration for the set command
 type SetCommandConfig struct {
-	Viper         *viper.Viper
-	TLSEnabled    bool
-	SkipTLSVerify bool
-	LogLevel      string
-	OutputFormat  string
-	Prettify      bool
+	CommandConfig
+	OutputFormat string
+	Prettify     bool
 }
 
 // SetDatapoint sets a specific datapoint value
 func SetDatapoint(config SetCommandConfig, serial string, channel string, datapoint string, value string) error {
 	// Setup system access point
-	sysAp, err := setupFunc(GetCommandConfig(config), "")
+	sysAp, err := setupFunc(config.CommandConfig, "")
 	if err != nil {
 		return err
 	}
