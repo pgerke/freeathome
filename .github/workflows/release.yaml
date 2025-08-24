@@ -41,3 +41,27 @@ jobs:
           prerelease: ${{ contains(steps.extract_version.outputs.version, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-build:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [check_release_trigger]
+    if: ${{ !contains(github.event.head_commit.message, '[skip deploy]') }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Get version info
+        id: version_info
+        uses: ./.github/actions/get-version-and-changelog
+
+      - name: Build and push Docker image
+        uses: ./.github/actions/docker-build
+        with:
+          version: ${{ needs.check_release_trigger.outputs.version_changed == 'true' && steps.version_info.outputs.version || '' }}
+          push: true
+          tags: latest

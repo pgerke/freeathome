@@ -1,0 +1,21 @@
+name: Docker PR Build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Docker Image (PR)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build Docker image
+        uses: ./.github/actions/docker-build
+        with:
+          push: false
