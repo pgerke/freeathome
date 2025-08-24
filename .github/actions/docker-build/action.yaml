@@ -63,17 +63,29 @@ runs:
         build-args: |
           version=${{ inputs.version || 'unknown' }}
           commit=${{ inputs.commit }}
-        provenance: true
-        sbom: true
         platforms: ${{ inputs.platforms }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        attest: |
+          type=provenance,mode=max
+          type=sbom
 
     - name: Cosign the Docker image with GitHub OIDC Token
       if: ${{ inputs.push == 'true' }}
       shell: bash
       run: |
-        iamges=""
-        for tag in ${{ steps.meta.outputs.tags }}; do
-          images+="${tag}@${{ steps.build.outputs.digest }}"
-        done
+        set -euo pipefail
+        cosign sign --yes --tlog-upload=true \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+          --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\.github/workflows/.*$" \
+          "ghcr.io/${{ github.repository }}/cli@${{ steps.build.outputs.digest }}"
 
-        cosign sign --yes --tlog-upload=true ${images}
+    - name: Verify provenance
+      if: ${{ inputs.push == 'true' }}
+      shell: bash
+      run: |
+        cosign verify-attestation \
+          --type slsaprovenance \
+          --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+          --certificate-identity-regexp 'github.com/${{ github.repository }}/\.github/workflows/.*' \
+          ghcr.io/${{ github.repository }}/cli@${{ steps.build.outputs.digest }}
