@@ -1,5 +1,6 @@
 name: "Docker CLI Build"
 description: "Build and optionally push Docker CLI image with provenance support"
+
 inputs:
   version:
     description: "Version to tag the image with (optional)"
@@ -7,7 +8,6 @@ inputs:
   commit:
     description: "Commit hash to include in build args"
     required: false
-    default: ${{ github.sha }}
   push:
     description: "Whether to push the image to registry"
     required: false
@@ -20,6 +20,7 @@ inputs:
     description: "Platforms to build for (comma-separated)"
     required: false
     default: "linux/amd64,linux/arm64"
+
 runs:
   using: "composite"
   steps:
@@ -32,7 +33,7 @@ runs:
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        password: ${{ github.token }}
 
     - name: Extract metadata
       id: meta

@@ -18,4 +18,5 @@ jobs:
       - name: Build Docker image
         uses: ./.github/actions/docker-build
         with:
+          commit: ${{ github.sha }}
           push: false
