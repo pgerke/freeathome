@@ -43,8 +43,7 @@ runs:
         tags: |
           type=ref,event=branch
           type=ref,event=pr
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
+          type=sha,format=long
           ${{ inputs.tags != '' && format('type=raw,value={0}', inputs.tags) || '' }}
           ${{ inputs.version != '' && format('type=raw,value=v{0}', inputs.version) || '' }}
 
