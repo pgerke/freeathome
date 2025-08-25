@@ -7,11 +7,6 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
-  packages: write
-  id-token: write # for keyless cosign
-
 jobs:
   check_release_trigger:
     name: Check if PR will trigger a Release
