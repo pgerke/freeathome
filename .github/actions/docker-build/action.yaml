@@ -76,8 +76,8 @@ runs:
       run: |
         set -euo pipefail
         cosign sign --yes --tlog-upload=true \
-          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-          --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\.github/workflows/.*$" \
+          --oidc-issuer "https://token.actions.githubusercontent.com" \
+          --identity-token "${{ github.token }}" \
           "ghcr.io/${{ github.repository }}/cli@${{ steps.build.outputs.digest }}"
 
     - name: Verify provenance
@@ -86,6 +86,6 @@ runs:
       run: |
         cosign verify-attestation \
           --type slsaprovenance \
-          --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-          --certificate-identity-regexp 'github.com/${{ github.repository }}/\.github/workflows/.*' \
+          --oidc-issuer https://token.actions.githubusercontent.com \
+          --identity-token "${{ github.token }}" \
           ghcr.io/${{ github.repository }}/cli@${{ steps.build.outputs.digest }}
