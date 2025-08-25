@@ -53,7 +53,7 @@ runs:
 
     - name: Build and push Docker image
       id: build
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: .
         file: ./cmd/cli.dockerfile
@@ -66,9 +66,8 @@ runs:
         platforms: ${{ inputs.platforms }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        attests: |
-          type=provenance,mode=max
-          type=sbom
+        provenance: mode=max
+        sbom: true
 
     - name: Cosign the Docker image with GitHub OIDC Token
       if: ${{ inputs.push == 'true' }}
