@@ -57,7 +57,7 @@ runs:
       with:
         context: .
         file: ./cmd/cli.dockerfile
-        push: ${{ inputs.push }}
+        push: true #${{ inputs.push }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         build-args: |
