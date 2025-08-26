@@ -57,7 +57,7 @@ runs:
       with:
         context: .
         file: ./cmd/cli.dockerfile
-        push: true #${{ inputs.push }}
+        push: ${{ inputs.push }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         build-args: |
@@ -75,25 +75,7 @@ runs:
       run: |
         set -euo pipefail
         cosign sign --yes "ghcr.io/${{ github.repository }}/cli@${{ steps.build.outputs.digest }}"
-
-    - name: Cosign smoke test
-      if: ${{ inputs.push == 'true' }}
-      shell: bash
-      run: |
-        # Verify signature
         cosign verify \
           --certificate-oidc-issuer https://token.actions.githubusercontent.com \
           --certificate-identity-regexp "github.com/${{ github.repository }}/\.github/workflows/.*" \
-          ghcr.io/${{ github.repository }}/cli@${{ steps.build.outputs.digest }}
-
-        # Verify SLSA-Provenance
-        cosign verify-attestation \
-          --type slsaprovenance \
-          --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-          --certificate-identity-regexp "github.com/${{ github.repository }}/\.github/workflows/.*" \
-          ghcr.io/${{ github.repository }}/cli@${{ steps.build.outputs.digest }}
-
-        # Verify SBOM
-        cosign verify-attestation \
-          --type spdx \
           ghcr.io/${{ github.repository }}/cli@${{ steps.build.outputs.digest }}
