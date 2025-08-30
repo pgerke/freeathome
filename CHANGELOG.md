@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.0](https://github.com/pgerke/freeathome/releases/tag/2.0.0) - 30.08.2025
+
+### Added
+
+- [#28](https://github.com/pgerke/freeathome/issues/28) **Comprehensive CLI Tool**: Implemented a full-featured command-line interface for all free@home operations
+  - Configuration management with interactive and non-interactive modes
+  - Support for YAML configuration files and environment variables
+  - Data retrieval commands (devicelist, configuration, device, datapoint)
+  - Data modification commands (set datapoint)
+  - Real-time monitoring with configurable reconnection strategies
+  - Flexible output formats (JSON/text) with prettify options
+  - TLS configuration options with certificate verification controls
+  - Configurable logging levels for debugging and monitoring
+- [#33](https://github.com/pgerke/freeathome/issues/33) **Docker Support**: Added Docker image building and multi-architecture support
+  - Multi-arch Docker images (linux/amd64, linux/arm64)
+  - Automated Docker image builds in CI/CD pipeline
+  - Security-focused Docker images with non-root user
+- **Enhanced Build System**: Improved Makefile with CLI-specific build targets
+  - `make cli-build` for building the CLI binary
+  - `make cli-run-local` for running without building
+  - `make cli-build-docker` for Docker image building
+  - `make cli-build-docker-multiarch` for multi-arch images
+
+### Changed
+
+- **Monitor Application Integration**: Refactored the standalone monitor application to be fully integrated into the CLI tool
+- **WebSocket Improvements**: Enhanced WebSocket communication with better error handling and reconnection logic
+- **Code Quality**: Improved separation of concerns and testability throughout the CLI implementation
+- **Error Handling**: Enhanced error handling and validation across all CLI commands
+
+### Technical Improvements
+
+- **Go Version**: Updated to Go 1.25
+- **Dependencies**: Bumped all Go dependencies to latest compatible versions
+- **Test Coverage**: Significantly improved test coverage for CLI functionality
+- **Integration Tests**: Enhanced integration tests with better timeout handling
+
 ## [v1.0.0](https://github.com/pgerke/freeathome/releases/tag/1.0.0) - 12.06.2025
 
 ### Added
