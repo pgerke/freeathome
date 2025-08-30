@@ -3,8 +3,12 @@ description: "Build and optionally push Docker CLI image with provenance support
 
 inputs:
   version:
-    description: "Version to tag the image with (optional)"
+    description: "Version to tag the image with"
     required: false
+  add_version_tag:
+    description: "Whether to add a version tag to the image"
+    required: false
+    default: "false"
   commit:
     description: "Commit hash to include in build args"
     required: false
@@ -49,7 +53,7 @@ runs:
           type=ref,event=pr
           type=sha,format=long
           ${{ inputs.tags != '' && format('type=raw,value={0}', inputs.tags) || '' }}
-          ${{ inputs.version != '' && format('type=raw,value=v{0}', inputs.version) || '' }}
+          ${{ inputs.add_version_tag == 'true' && inputs.version != '' && format('type=raw,value=v{0}', inputs.version) || '' }}
 
     - name: Build and push Docker image
       id: build

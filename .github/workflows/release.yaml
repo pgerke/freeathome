@@ -11,6 +11,7 @@ jobs:
   check_release_trigger:
     name: Check if PR will trigger a Release
     runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.merged == true }}
     outputs:
       version_changed: ${{ steps.detect_version_change.outputs.version_changed }}
     steps:
@@ -62,7 +63,8 @@ jobs:
       - name: Build and push Docker image
         uses: ./.github/actions/docker-build
         with:
-          version: ${{ needs.check_release_trigger.outputs.version_changed == 'true' && steps.version_info.outputs.version || '' }}
+          version: ${{ steps.version_info.outputs.version }}
+          add_version_tag: ${{ needs.check_release_trigger.outputs.version_changed == 'true' }}
           commit: ${{ github.sha }}
           push: true
           tags: latest
