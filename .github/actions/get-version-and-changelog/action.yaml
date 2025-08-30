@@ -30,8 +30,8 @@ runs:
       run: |
         {
           echo "changelog<<EOF"
-          awk -v version="$(cz version -p)" '
-            $0 ~ "^##[[:space:]]*\\[?" version "(\\]|\\))" { in_section = 1; next }
+          awk -v version="v$(cz version -p)" '
+            $0 ~ "^##[[:space:]]*\\[" version "\\]" { in_section = 1; next }
             $0 ~ "^##[[:space:]]" && in_section { exit }
             in_section { print }
           ' CHANGELOG.md

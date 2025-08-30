@@ -28,26 +28,109 @@ This will give you access to the public API client and related utilities for int
 
 ### CLI Tool
 
-The project also includes a command-line interface (CLI) tool for interacting with free@home systems. To build and use the CLI:
+The project includes a comprehensive command-line interface (CLI) tool for interacting with free@home systems. The CLI provides a unified interface for all operations including configuration, data retrieval, data modification, and real-time monitoring.
+
+#### Building the CLI
 
 ```sh
 # Build the CLI tool with proper version and commit information
 make cli-build
 
-# Configure your system access point
+# Or run it directly without building
+make cli-run-local
+```
+
+#### Docker Support
+
+The CLI is also available as a Docker image:
+
+```sh
+# Build Docker image
+make cli-build-docker
+
+# Build multi-architecture Docker image (linux/amd64, linux/arm64)
+make cli-build-docker-multiarch
+
+# Run with Docker
+docker run --rm ghcr.io/pgerke/freeathome-cli:latest --help
+```
+
+#### CLI Commands
+
+##### Configuration
+
+```sh
+# Configure your system access point (interactive)
 ./fh configure
 
+# Configure with command line flags
+./fh configure --hostname 192.168.1.100 --username admin --password mypass
+
+# Configure with environment variables
+export FREEATHOME_HOSTNAME=192.168.1.100
+export FREEATHOME_USERNAME=admin
+export FREEATHOME_PASSWORD=mypass
+./fh configure
+
+# Show current configuration
+./fh configure show
+```
+
+##### Data Retrieval
+
+```sh
 # Get device list
 ./fh get devicelist
 
-# Monitor real-time events
-./fh monitor
+# Get configuration
+./fh get configuration
 
-# Set a datapoint
+# Get specific device by serial
+./fh get device [serial]
+
+# Get specific datapoint
+./fh get datapoint [serial] [channel] [datapoint]
+
+# Output options
+./fh get devicelist --output json --prettify
+./fh get devicelist --output text
+```
+
+##### Data Modification
+
+```sh
+# Set datapoint value
 ./fh set datapoint [serial] [channel] [datapoint] [value]
 ```
 
-For more information about available commands, run `./fh --help`.
+##### Real-time Monitoring
+
+```sh
+# Monitor real-time events
+./fh monitor
+
+# Monitor with custom settings
+./fh monitor --timeout 60 --max-reconnection-attempts 5 --exponential-backoff
+```
+
+##### Global Options
+
+All commands support these global options:
+
+```sh
+# TLS configuration
+--tls                    # Enable TLS (default: true)
+--skip-tls-verify       # Skip TLS certificate verification
+
+# Logging
+--log-level             # Set log level (debug, info, warn, error)
+
+# Output format (for get commands)
+--output                # Output format (json, text)
+--prettify              # Prettify JSON output with indentation
+```
+
+For more information about available commands and options, run `./fh --help` or `./fh [command] --help`.
 
 ## Features
 
@@ -64,6 +147,19 @@ The project initially covers the scope of the [TypeScript free@home API Client](
 - Trigger proxy device
 - Set proxy device value
 - Default and custom loggers!
+
+### CLI Tool Features
+
+The CLI tool provides a comprehensive interface for all free@home operations:
+
+- **Configuration Management**: Interactive and non-interactive configuration with support for YAML files and environment variables
+- **Data Retrieval**: Get device lists, configurations, individual devices, and datapoints with flexible output formats
+- **Data Modification**: Set datapoint values with validation
+- **Real-time Monitoring**: WebSocket-based monitoring with configurable reconnection strategies
+- **Docker Support**: Multi-architecture Docker images for easy deployment
+- **Flexible Output**: JSON and text output formats with prettify options
+- **TLS Configuration**: Configurable TLS settings with certificate verification options
+- **Logging**: Configurable log levels for debugging and monitoring
 
 ## Usage Requirements
 
