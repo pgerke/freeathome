@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v2.0.0](https://github.com/pgerke/freeathome/releases/tag/2.0.0) - 30.08.2025
+## [v2.0.0] - 30.08.2025
 
 ### Added
 
-- [#28](https://github.com/pgerke/freeathome/issues/28) **Comprehensive CLI Tool**: Implemented a full-featured command-line interface for all free@home operations
+- [#28] **Comprehensive CLI Tool**: Implemented a full-featured command-line interface for all free@home operations
   - Configuration management with interactive and non-interactive modes
   - Support for YAML configuration files and environment variables
   - Data retrieval commands (devicelist, configuration, device, datapoint)
@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Flexible output formats (JSON/text) with prettify options
   - TLS configuration options with certificate verification controls
   - Configurable logging levels for debugging and monitoring
-- [#33](https://github.com/pgerke/freeathome/issues/33) **Docker Support**: Added Docker image building and multi-architecture support
+- [#33] **Docker Support**: Added Docker image building and multi-architecture support
   - Multi-arch Docker images (linux/amd64, linux/arm64)
   - Automated Docker image builds in CI/CD pipeline
   - Security-focused Docker images with non-root user
@@ -42,11 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test Coverage**: Significantly improved test coverage for CLI functionality
 - **Integration Tests**: Enhanced integration tests with better timeout handling
 
-## [v1.0.0](https://github.com/pgerke/freeathome/releases/tag/1.0.0) - 12.06.2025
+## [v1.0.0] - 12.06.2025
 
 ### Added
 
-- [#7](https://github.com/pgerke/freeathome/issues/7) Implemented initial API scope:
+- [#7] Implemented initial API scope:
   - The scope of the [TypeScript free@home API Client](https://github.com/pgerke/freeathome-local-api-client) is covered
   - System Access Point configuration
   - Logger support
@@ -58,4 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Get and set datapoints
   - Trigger proxy device
   - Set proxy device value
-- [#16](https://github.com/pgerke/freeathome/issues/16) Implemented monitor application covering the scope of the [JavaScript free@home Monitor](https://github.com/pgerke/freeathome-monitor)
+- [#16] Implemented monitor application covering the scope of the [JavaScript free@home Monitor](https://github.com/pgerke/freeathome-monitor)
+
+[Unreleased]: https://github.com/pgerke/freeathome/compare/2.0.0...HEAD
+[v2.0.0]: https://github.com/pgerke/freeathome/releases/tag/2.0.0
+[v1.0.0]: https://github.com/pgerke/freeathome/releases/tag/1.0.0
+[#28]: https://github.com/pgerke/freeathome/issues/28
+[#33]: https://github.com/pgerke/freeathome/issues/33
+[#7]: https://github.com/pgerke/freeathome/issues/7
+[#16]: https://github.com/pgerke/freeathome/issues/16
