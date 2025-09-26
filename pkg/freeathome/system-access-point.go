@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-resty/resty/v2"
 
-	"github.com/pgerke/freeathome/pkg/models"
+	"github.com/pgerke/freeathome/v2/pkg/models"
 )
 
 // Config represents the configuration for a SystemAccessPoint

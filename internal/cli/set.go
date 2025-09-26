@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/pgerke/freeathome/pkg/models"
+	"github.com/pgerke/freeathome/v2/pkg/models"
 )
 
 // SetCommandConfig is a struct that contains the configuration for the set command

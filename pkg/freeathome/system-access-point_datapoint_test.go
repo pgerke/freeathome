@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pgerke/freeathome/pkg/models"
+	"github.com/pgerke/freeathome/v2/pkg/models"
 )
 
 func TestSystemAccessPointGetDatapoint(t *testing.T) {

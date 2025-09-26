@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	internal "github.com/pgerke/freeathome/internal"
+	internal "github.com/pgerke/freeathome/v2/internal"
 	"github.com/spf13/cobra"
 )
 

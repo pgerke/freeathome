@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/pgerke/freeathome/pkg/freeathome"
-	"github.com/pgerke/freeathome/pkg/models"
+	"github.com/pgerke/freeathome/v2/pkg/freeathome"
+	"github.com/pgerke/freeathome/v2/pkg/models"
 	"golang.org/x/term"
 )
 

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/pgerke/freeathome/pkg/models"
+	"github.com/pgerke/freeathome/v2/pkg/models"
 )
 
 const testMessageValid = "valid message"
