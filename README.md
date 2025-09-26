@@ -21,7 +21,7 @@ go get github.com/pgerke/freeathome@latest
 You can then import the package in your code:
 
 ```go
-import "github.com/pgerke/freeathome"
+import "github.com/pgerke/freeathome/v2"
 ```
 
 This will give you access to the public API client and related utilities for interacting with a local free\@home SysAP.

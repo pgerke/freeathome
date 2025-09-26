@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/pgerke/freeathome/internal/cli"
+	"github.com/pgerke/freeathome/v2/internal/cli"
 )
 
 var (
