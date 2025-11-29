@@ -1,6 +1,6 @@
 module github.com/pgerke/freeathome/v2
 
-go 1.25.4
+go 1.25
 
 require (
 	github.com/fatih/color v1.18.0
