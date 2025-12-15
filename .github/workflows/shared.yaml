@@ -60,7 +60,7 @@ jobs:
       - name: Run Go Test
         run: make test-ci
       - name: Upload artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: Coverage Profile
           path: coverage.*
