@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Bump dependencies
+- **Go Version**: Updated to Go 1.26
 
 ## [v2.3.0] - 10.01.2026
 
